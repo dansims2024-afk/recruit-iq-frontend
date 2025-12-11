@@ -1,11 +1,1133 @@
-import React from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, UserPlus, UserX, Trash2, Zap, Download, Loader2, FileWarning, LogIn, LogOut, Building, Mail } from 'lucide-react';
 
-export default function App() {
-  return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: 24 }}>
-      <h1>Recruit IQ — Frontend</h1>
-      <p>Welcome! This is a minimal Vite + React starter.</p>
-      <p>Run <code>npm run dev</code> and open the app.</p>
+// NOTE: Using localStorage for leaderboard persistence, which is available in a single-file environment.
+const localStorageKey = 'hm_copilot_leaderboard_data';
+const usageKey = 'hm_copilot_screen_count';
+const userSessionKey = 'hm_copilot_user_session';
+const usersDbKey = 'hm_copilot_users_db'; // NEW: Simulate a user database
+const MAX_FREE_SCREENS = 3;
+
+// API Configuration
+// NOTE: For this prototype to work client-side without a real backend, we point directly to the Gemini API.
+// In a production environment, PROXY_ENDPOINT_URL would be your secure server endpoint (e.g., https://your-domain.com/api/analyze).
+const apiKey = ""; 
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+
+// Placeholder constants for future backend endpoints
+const SUBSCRIBE_ENDPOINT_URL = 'https://your-domain.com/api/subscribe'; 
+const USER_ID_PLACEHOLDER = 'manager-demo-user-12345'; 
+
+// --- Brand Colors ---
+const BRAND = {
+    primaryBlue: '#2B81B9',
+    deepPurple: '#52438E',
+    orchid: '#8C50A1',
+    softBlue: '#b2acce',
+    cyan: '#00c9ff',
+};
+
+// --- Utility Functions ---
+
+const hashJobDescription = (jd) => {
+    let hash = 0;
+    if (!jd || jd.length === 0) return "default";
+    for (let i = 0; i < jd.length; i++) {
+        const char = jd.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36);
+};
+
+const getLeaderboard = () => {
+    try {
+        const data = localStorage.getItem(localStorageKey);
+        return data ? JSON.parse(data) : {};
+    } catch (e) {
+        console.error("Error loading leaderboard:", e);
+        return {};
+    }
+};
+
+const saveLeaderboard = (data) => {
+    try {
+        localStorage.setItem(localStorageKey, JSON.stringify(data));
+    } catch (e) {
+        console.error("Error saving leaderboard:", e);
+    }
+};
+
+const getUsageCount = () => {
+    try {
+        const count = localStorage.getItem(usageKey);
+        return parseInt(count, 10) || 0;
+    } catch (e) {
+        console.error("Error loading usage count:", e);
+        return 0;
+    }
+};
+
+const saveUsageCount = (count) => {
+    try {
+        localStorage.setItem(usageKey, count.toString());
+    } catch (e) {
+        console.error("Error saving usage count:", e);
+    }
+};
+
+const getUserSession = () => {
+    try {
+        const session = localStorage.getItem(userSessionKey);
+        return session ? JSON.parse(session) : null;
+    } catch (e) {
+        return null;
+    }
+};
+
+const saveUserSession = (user) => {
+    try {
+        if (user) localStorage.setItem(userSessionKey, JSON.stringify(user));
+        else localStorage.removeItem(userSessionKey);
+    } catch (e) {
+        console.error("Error saving user session", e);
+    }
+};
+
+// NEW: User Database Utilities for realistic auth simulation
+const getUsersDb = () => {
+    try {
+        const db = localStorage.getItem(usersDbKey);
+        return db ? JSON.parse(db) : [];
+    } catch (e) { return []; }
+};
+
+const saveUserToDb = (user) => {
+    const users = getUsersDb();
+    // Check if email exists
+    if (users.find(u => u.email === user.email)) {
+        throw new Error("User already exists");
+    }
+    users.push(user);
+    localStorage.setItem(usersDbKey, JSON.stringify(users));
+};
+
+const authenticateUser = (email, password) => {
+    const users = getUsersDb();
+    // Simple password check (In production, passwords would be hashed)
+    const user = users.find(u => u.email === email && u.password === password);
+    if (!user) throw new Error("Invalid email or password");
+    // Return user without password
+    const { password: _, ...safeUser } = user;
+    return safeUser;
+};
+
+
+const extractCandidateName = (resumeContent) => {
+    if (!resumeContent) return 'Unnamed Candidate';
+    const lines = resumeContent.trim().split('\n');
+    const firstLine = lines.find(line => line.trim() !== '');
+    if (!firstLine) return 'Unnamed Candidate';
+    
+    if (firstLine.length < 50 && !/[@\(\)\d]/.test(firstLine)) {
+        return firstLine.trim();
+    }
+    
+    const nameMatch = firstLine.match(/^(\S+\s\S+)/); 
+    if (nameMatch) {
+        return nameMatch[1];
+    }
+    
+    return firstLine.split('|')[0].trim() || 'Unnamed Candidate';
+};
+
+let setCopyFeedbackGlobal = null; 
+
+const handleCopy = (text) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        if (setCopyFeedbackGlobal) {
+            setCopyFeedbackGlobal("Copied!");
+            setTimeout(() => setCopyFeedbackGlobal(null), 2000);
+        }
+    } catch (err) {
+        if (setCopyFeedbackGlobal) {
+            setCopyFeedbackGlobal("Copy failed!");
+            setTimeout(() => setCopyFeedbackGlobal(null), 2000);
+        }
+        console.error('Fallback copy failed:', err);
+    }
+    document.body.removeChild(textArea);
+};
+
+const updateLeaderboardUtility = (newEntry) => {
+    const allData = getLeaderboard();
+    let currentList = allData[newEntry.jdHash] || [];
+    
+    const existingIndex = currentList.findIndex(c => c.name === newEntry.name);
+    
+    if (existingIndex !== -1 && currentList[existingIndex].score === newEntry.score) {
+        return; 
+    }
+    
+    if (existingIndex !== -1) {
+        currentList[existingIndex] = newEntry;
+    } else {
+        currentList.push(newEntry);
+    }
+    
+    const updatedLeaderboard = { ...allData, [newEntry.jdHash]: currentList };
+    saveLeaderboard(updatedLeaderboard);
+};
+
+
+// --- Sub-Components ---
+
+const Logo = () => (
+  <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
+    <defs>
+      <linearGradient id="swirlBrand" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor={BRAND.cyan} />
+        <stop offset="100%" stopColor={BRAND.primaryBlue} />
+      </linearGradient>
+      
+      <linearGradient id="swirlDeep" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor={BRAND.deepPurple} />
+        <stop offset="100%" stopColor={BRAND.orchid} />
+      </linearGradient>
+    </defs>
+    <path d="M 45 15 C 25 15, 10 35, 15 60 C 16 68, 25 75, 35 75 C 40 75, 35 70, 30 65 C 20 50, 25 30, 45 25 C 50 23, 55 20, 45 15 Z" fill="url(#swirlBrand)" />
+    <path d="M 12 55 C 10 45, 12 35, 18 25 L 20 28 C 15 35, 4 45, 16 52 Z" fill={BRAND.cyan} />
+    <path d="M 30 78 C 20 75, 15 65, 15 55 L 12 58 C 15 70, 25 80, 35 80 Z" fill={BRAND.primaryBlue} />
+
+    <path d="M 55 85 C 75 85, 90 65, 85 40 C 84 32, 75 25, 65 25, 60 25, 65 30, 70 35 C 80 50, 75 70, 55 75 C 50 77, 45 80, 55 85 Z" fill="url(#swirlDeep)" />
+    <path d="M 88 45 C 90 55, 88 65, 82 75 L 80 72 C 85 65, 86 55, 84 48 Z" fill={BRAND.orchid} />
+    <path d="M 70 22 C 80 25, 85 35, 85 45 L 88 42 C 85 30, 75 20, 65 20 Z" fill={BRAND.deepPurple} />
+  </svg>
+);
+
+const AuthModal = ({ onClose, onLogin, initialIsSignUp }) => {
+    const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
+    const [fullName, setFullName] = useState('');
+    const [companyName, setCompanyName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        // Simulate API latency
+        setTimeout(() => {
+            try {
+                if (isSignUp) {
+                    const newUser = {
+                        id: 'user_' + Math.random().toString(36).substr(2, 9),
+                        email: email.toLowerCase(),
+                        password: password, 
+                        name: fullName,
+                        company: companyName,
+                        plan: 'free'
+                    };
+                    saveUserToDb(newUser);
+                    const { password: _, ...safeUser } = newUser;
+                    onLogin(safeUser);
+                } else {
+                    const user = authenticateUser(email.toLowerCase(), password);
+                    onLogin(user);
+                }
+            } catch (err) {
+                setError(err.message);
+                setLoading(false);
+            }
+        }, 1000);
+    };
+
+    const toggleMode = () => {
+        setIsSignUp(!isSignUp);
+        setError(null);
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 print:hidden">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md animate-in zoom-in duration-300 relative border-t-4 border-[#52438E]">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-[#52438E]"><X size={20} /></button>
+                
+                <h2 className="text-2xl font-bold text-[#2B81B9] mb-2 text-center">
+                    {isSignUp ? 'Create Your Profile' : 'Welcome Back'}
+                </h2>
+                <p className="text-slate-500 text-sm text-center mb-6">
+                    {isSignUp ? 'Join Recruit-IQ to save candidates and track your hiring.' : 'Log in to access your dashboard.'}
+                </p>
+
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 flex items-center gap-2">
+                        <AlertCircle size={16} /> {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {isSignUp && (
+                        <>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Full Name</label>
+                            <div className="relative">
+                                <User size={16} className="absolute left-3 top-3 text-[#b2acce]" />
+                                <input 
+                                    type="text" 
+                                    required
+                                    className="w-full p-3 pl-10 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
+                                    placeholder="Jane Doe"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Company Name</label>
+                            <div className="relative">
+                                <Building size={16} className="absolute left-3 top-3 text-[#b2acce]" />
+                                <input 
+                                    type="text" 
+                                    required
+                                    className="w-full p-3 pl-10 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
+                                    placeholder="Acme Corp"
+                                    value={companyName}
+                                    onChange={(e) => setCompanyName(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        </>
+                    )}
+                    
+                    <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email Address</label>
+                        <input 
+                            type="email" 
+                            required
+                            className="w-full p-3 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
+                            placeholder="you@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Password</label>
+                        <input 
+                            type="password" 
+                            required
+                            className="w-full p-3 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                    </div>
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full py-3 bg-[#52438E] text-white rounded-xl font-bold hover:opacity-90 transition-all flex justify-center gap-2 items-center shadow-md"
+                    >
+                        {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (isSignUp ? 'Create Profile' : 'Log In')}
+                    </button>
+                </form>
+
+                <div className="mt-6 text-center text-sm text-slate-500">
+                    {isSignUp ? "Already have an account? " : "Don't have an account? "}
+                    <button onClick={toggleMode} className="text-[#2B81B9] font-bold hover:underline">
+                        {isSignUp ? 'Log In' : 'Create Profile'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const PaywallModal = ({ MAX_FREE_SCREENS, screensUsed, onClose, onSubscribe, currentUser, onOpenAuth }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 print:hidden">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center animate-in zoom-in duration-300 border-t-4 border-[#52438E]">
+            <Zap size={36} className="text-[#8C50A1] mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-[#2B81B9] mb-2">Unlock Unlimited Screening</h3>
+            <p className="text-slate-600 mb-6">
+                You've hit the limit of **{MAX_FREE_SCREENS} free candidate analyses** ({screensUsed}/{MAX_FREE_SCREENS} used).
+            </p>
+            
+            {!currentUser ? (
+                <div className="space-y-4">
+                     <div className="bg-[#b2acce]/20 border border-[#b2acce] p-4 rounded-lg text-sm text-[#2B81B9] mb-4 font-medium">
+                        Please create a profile or log in to subscribe to the Pro plan.
+                     </div>
+                     <button
+                        onClick={onOpenAuth}
+                        className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#52438E] to-[#8C50A1] hover:opacity-90 shadow-lg transition-all transform active:scale-[0.98]"
+                    >
+                        Create Profile / Log In
+                    </button>
+                     <button onClick={onClose} className="text-[#b2acce] text-sm hover:text-slate-600 underline">Not now</button>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    <button
+                        onClick={onSubscribe}
+                        className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#00c9ff] to-[#2B81B9] hover:opacity-90 shadow-lg shadow-[#00c9ff]/40 transition-all transform active:scale-[0.98]"
+                    >
+                        Unlock Unlimited Screening ($29/Month)
+                    </button>
+                    <button
+                        onClick={() => {
+                            window.open(`mailto:sales@corecreativity.ai?subject=Inquiry%20about%20Team%20License%20for%20Recruit-IQ`, '_blank');
+                            onClose();
+                        }}
+                        className="w-full py-3 rounded-xl font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 transition-colors border border-[#b2acce]"
+                    >
+                        Contact Our Team
+                    </button>
+                </div>
+            )}
+            
+            <div className="mt-4 text-xs text-[#b2acce]">
+                (Clicking **Unlock** simulates payment & resets counter)
+            </div>
+        </div>
     </div>
-  )
+);
+
+
+const MatchScoreCard = ({ analysis, onCopySummary }) => {
+  const score = analysis.matchScore || 0;
+  const summary = analysis.fitSummary || "Run analysis to generate fit summary.";
+  const strengths = Array.isArray(analysis.strengths) ? analysis.strengths : [];
+  const gaps = Array.isArray(analysis.gaps) ? analysis.gaps : [];
+  
+  const isHighFit = score >= 80;
+  const colorClass = isHighFit ? 'from-[#00c9ff] to-[#2B81B9]' : // High fit -> Brand Blues
+                     score >= 50 ? 'from-[#8C50A1] to-[#52438E]' : // Medium fit -> Brand Purples
+                     'from-red-500 to-red-700'; // Low fit -> Red (Standard)
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
+      <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Percent size={14} className="text-[#00c9ff]" />
+          Candidate Scorecard
+        </div>
+        <button 
+          onClick={onCopySummary} 
+          disabled={!analysis.matchScore}
+          className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 disabled:opacity-50 transition-colors print:hidden"
+        >
+          <Copy size={12} /> Copy Summary to Clipboard
+        </button>
+      </h2>
+      <div className="flex items-center gap-6 mb-4">
+        <div className={`relative w-24 h-24 flex items-center justify-center rounded-full border-4 text-2xl font-bold shadow-lg 
+          bg-gradient-to-br ${colorClass} text-white`}>
+          {score}%
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-[#2B81B9] mb-1">AI Screening Assessment</h3>
+          <p className="text-sm text-slate-600 leading-snug italic">{summary}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4">
+        <div className="bg-[#00c9ff]/5 border border-[#00c9ff]/20 rounded-xl p-4">
+          <div className="font-semibold text-[#2B81B9] flex items-center gap-1 mb-2">
+            <ThumbsUp size={14} /> Strong Matches
+          </div>
+          {strengths.length > 0 ? (
+            <ul className="space-y-1">
+              {strengths.map((s, i) => (
+                <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5">
+                  <span className="mt-1 w-1 h-1 rounded-full bg-[#00c9ff] shrink-0" />
+                  {typeof s === 'string' ? s : JSON.stringify(s)}
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
+        </div>
+        <div className="bg-[#8C50A1]/5 border border-[#8C50A1]/20 rounded-xl p-4">
+          <div className="font-semibold text-[#8C50A1] flex items-center gap-1 mb-2">
+            <ThumbsDown size={14} /> Red Flags / Gaps
+          </div>
+          {gaps.length > 0 ? (
+            <ul className="space-y-1">
+              {gaps.map((g, i) => (
+                <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5">
+                  <span className="mt-1 w-1 h-1 rounded-full bg-[#8C50A1] shrink-0" />
+                  {typeof g === 'string' ? g : JSON.stringify(g)}
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboardData }) => {
+    
+    const currentList = leaderboardData[jdHash] || [];
+    const sortedList = currentList.sort((a, b) => b.score - a.score).slice(0, 10);
+
+    if (sortedList.length === 0) return (
+      <div className="text-center py-8 bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
+        <Zap size={24} className="text-[#00c9ff] mx-auto mb-2" />
+        <p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p>
+      </div>
+    );
+    
+    const handleDeleteLeaderboard = () => {
+        const confirmed = window.confirm("Are you sure you want to clear the entire leaderboard for this Job Description? This action cannot be undone.");
+        if (confirmed) {
+            onClear(jdHash); 
+        }
+    };
+    
+    return (
+        <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
+                <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2">
+                    <UserPlus size={14} className="text-[#2B81B9]" />
+                    Candidate Leaderboard ({sortedList.length} tracked)
+                </h2>
+                <button 
+                  onClick={handleDeleteLeaderboard} 
+                  className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors"
+                  title="Clear leaderboard for this JD"
+                >
+                  <Trash2 size={12} /> Clear
+                </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce]/20">
+                {sortedList.map((candidate, index) => {
+                    const isTop3 = index < 3;
+                    const isCurrent = candidate.name === currentCandidateName;
+                    
+                    let rankColor = 'bg-[#b2acce]';
+                    if (index === 0) rankColor = 'bg-[#00c9ff]'; // 1st place
+                    if (index === 1) rankColor = 'bg-[#2B81B9]'; // 2nd place
+                    if (index === 2) rankColor = 'bg-[#52438E]'; // 3rd place
+                    
+                    return (
+                        <div key={candidate.name} className={`p-4 flex items-center justify-between transition-all ${isCurrent ? 'bg-[#00c9ff]/10 border-l-4 border-[#00c9ff]' : 'hover:bg-slate-50'}`}>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center ${rankColor}`}>
+                                    {index + 1}
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-slate-800">{candidate.name} {isCurrent && <span className="text-[10px] ml-1 bg-[#2B81B9] text-white px-1 py-0.5 rounded-full">CURRENT</span>}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className={`font-bold text-lg ${candidate.score >= 80 ? 'text-[#00c9ff]' : candidate.score >= 50 ? 'text-[#8C50A1]' : 'text-red-600'}`}>
+                                    {candidate.score}%
+                                </div>
+                                <div className="w-16 h-1 bg-[#b2acce]/30 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full ${candidate.score >= 80 ? 'bg-[#00c9ff]' : candidate.score >= 50 ? 'bg-[#8C50A1]' : 'bg-red-500'}`} 
+                                      style={{ width: `${candidate.score}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const InterviewQuestionsSection = ({ questions }) => (
+  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
+    <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2">
+      <HelpCircle size={14} className="text-[#00c9ff]" />
+      Suggested Interview Questions
+    </h2>
+
+    <div className="grid grid-cols-1 gap-3">
+      {questions && questions.length > 0 ? (
+        questions.map((q, i) => (
+          <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce]/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors">
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">
+              Q{i + 1}
+            </div>
+            <div className="text-sm text-slate-700 font-medium leading-relaxed">
+              {q}
+            </div>
+          </div>
+        ))
+      ) : (
+         <p className="text-sm text-slate-500 italic">No questions generated.</p>
+      )}
+    </div>
+  </div>
+);
+
+const CommunicationTools = ({ 
+  activeTool, 
+  setActiveTool, 
+  draftContent, 
+  handleDraft, 
+  handleCopy, 
+  setDrafts, 
+  selectedTone, 
+  setSelectedTone, 
+  toolLoading 
+}) => (
+  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6">
+      <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><MessageCircle size={16} className="text-[#52438E]" /> Manager Actions</h4>
+      <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs font-medium text-slate-500">Tone:</span>
+          {['professional', 'casual', 'direct'].map(tone => (
+              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce]/20'}`}>{tone}</button>
+          ))}
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+          <button onClick={() => handleDraft('invite')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#00c9ff] text-slate-700 flex flex-col items-center gap-1 text-[#2B81B9] font-semibold hover:bg-[#00c9ff]/5 transition-all"><UserPlus size={16} className="text-[#00c9ff]" /> Custom Interview Email (Applied to Job Posting)</button>
+          <button onClick={() => handleDraft('outreach')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#8C50A1] text-slate-700 flex flex-col items-center gap-1 text-[#8C50A1] font-semibold hover:bg-[#8C50A1]/5 transition-all"><Mail size={16} className="text-[#8C50A1]" /> Sourcing Email Draft (Cold Outreach)</button>
+      </div>
+      {toolLoading && (
+          <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-[#2B81B9]" /> Generating Draft...
+          </div>
+      )}
+      {draftContent && activeTool && (
+          <div className="bg-slate-50 border border-[#b2acce] rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+              <div className="mb-2 flex justify-between items-center">
+                  <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft (Cold Outreach)' : 'Custom Interview Email (Applied to Job Posting)'})</span>
+                  <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
+              </div>
+              <textarea 
+                  value={draftContent} 
+                  onChange={(e) => setDrafts(activeTool, e.target.value)} 
+                  className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" 
+              />
+              <div className="mt-3 flex justify-end">
+                  <button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-white border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button>
+              </div>
+          </div>
+      )}
+  </div>
+);
+
+// --- Main App ---
+
+export default function App() { 
+  const [activeTab, setActiveTab] = useState('jd'); 
+  const [jobDescription, setJobDescription] = useState('');
+  const [resume, setResume] = useState('');
+  const [candidateName, setCandidateName] = useState(''); 
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [copyFeedback, setCopyFeedback] = useState(null);
+  
+  const [activeTool, setActiveTool] = useState(null);
+  const [inviteDraft, setInviteDraft] = useState('');
+  const [outreachDraft, setOutreachDraft] = useState('');
+  const [toolLoading, setToolLoading] = useState(false);
+  const [selectedTone, setSelectedTone] = useState('professional'); 
+  const [libsLoaded, setLibsLoaded] = useState(false);
+  const [screensUsed, setScreensUsed] = useState(getUsageCount()); 
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
+  
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState(getUserSession());
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authInitialSignUp, setAuthInitialSignUp] = useState(false);
+
+  // Initialize User from Local Storage
+  useEffect(() => {
+      setCopyFeedbackGlobal = setCopyFeedback;
+  }, []);
+  
+  const handleLogin = (user) => {
+      setCurrentUser(user);
+      saveUserSession(user);
+      setShowAuthModal(false);
+  };
+  
+  const handleLogout = () => {
+      setCurrentUser(null);
+      saveUserSession(null);
+  };
+
+  const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
+  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard()); 
+
+  // --- Leaderboard Update Handler (Passed to Leaderboard Component) ---
+  const handleClearLeaderboard = useCallback((jdHashToClear) => {
+      setLeaderboardData(prev => {
+          const newLeaderboard = { ...prev };
+          delete newLeaderboard[jdHashToClear];
+          saveLeaderboard(newLeaderboard);
+          return newLeaderboard;
+      });
+  }, []);
+
+  // Sync internal state with external leaderboard changes caused by analysis
+  useEffect(() => {
+      const allData = getLeaderboard();
+      if (JSON.stringify(allData) !== JSON.stringify(leaderboardData)) {
+          setLeaderboardData(allData);
+      }
+  }, [analysis, currentJdHash]);
+
+  // --- Effects for Script Loading ---
+  useEffect(() => {
+    const loadScript = (src) => {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+          resolve();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    Promise.all([
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'),
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js')
+    ]).then(() => {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+      setLibsLoaded(true);
+    }).catch(err => console.error("Failed to load file parsing libs", err));
+  }, []);
+
+  // --- Example Data ---
+  const fullExampleJD = `Company: Stellar Dynamics Corp.
+Location: Phoenix, AZ
+Job Type: Full-Time, Exempt
+Reports To: Accounting Manager
+🌟 About Stellar Dynamics Corp.
+Stellar Dynamics Corp. is a rapidly growing tech startup focused on revolutionizing sustainable energy storage solutions. We are a dynamic, fast-paced organization committed to financial excellence and operational efficiency. We are seeking a detail-oriented and motivated Staff Accountant to join our Finance team and contribute to our mission of building a cleaner, brighter future.
+
+📝 Key Responsibilities
+The Staff Accountant will play a crucial role in maintaining accurate financial records and supporting the month-end close process. Key responsibilities include:
+
+General Ledger (GL) Management:
+Prepare and post journal entries, including accruals, prepayments, and reclassifications.
+Perform monthly GL account reconciliations and analysis to ensure accuracy and resolve discrepancies.
+Month-End Close:
+Assist in the timely and accurate completion of the monthly, quarterly, and annual financial close process.
+Generate and review supporting schedules and reports for financial statements.
+Accounts Payable (AP) & Accounts Receivable (AR):
+Process vendor invoices and manage weekly payment runs.
+Assist with the invoicing of customers and monitor outstanding AR balances.
+Fixed Assets:
+Maintain the fixed asset register, including tracking additions, disposals, and calculating monthly depreciation.
+Tax & Compliance:
+Assist with documentation for external audits and compliance requirements.
+Support the preparation of sales and use tax filings.
+Ad-Hoc Projects:
+Participate in process improvement initiatives and system upgrades within the Finance department.
+🎯 Qualifications
+Required:
+Education: Bachelor's degree in Accounting, Finance, or a related field.
+Experience: 1-3 years of experience in an accounting role, preferably within a corporate setting.
+Technical Skills: Strong proficiency in Microsoft Excel (pivot tables, VLOOKUPs, etc.) and experience with a major ERP system (e.g., SAP, Oracle, or NetSuite).
+Foundational Knowledge: Solid understanding of Generally Accepted Accounting Principles (GAAP).
+Preferred:
+CPA track or desire to pursue certification.
+Experience in the technology or manufacturing industries.
+✨ Skills & Competencies
+Detail-Oriented: Exceptional attention to detail and accuracy in data entry and analysis.
+Organizational Skills: Excellent time management and ability to meet strict deadlines.
+Communication: Strong verbal and written communication skills to interact effectively with internal teams.
+Problem-Solving: Proactive approach to identifying and resolving accounting issues.
+💵 Benefits & Perks
+Competitive salary and performance-based bonus.
+Generous paid time off and paid holidays.
+Comprehensive health, dental, and vision insurance plans.
+401(k) matching program.
+Casual dress code and flexible work arrangements (e.g., hybrid schedule).
+On-site gym and complimentary snacks/beverages.`;
+  
+  const exampleResume = `Soda McTasty
+(555) 123-4567 | soda.mctasty@email.com | Phoenix, AZ 85001 | https://www.google.com/search?q=linkedin.com/in/sodamctasty
+
+Professional Summary
+Highly motivated and detail-oriented Junior Accountant with 1.5 years of hands-on experience in financial record maintenance, general ledger management, and supporting full-cycle accounting functions. Proven ability to execute month-end closing procedures and enhance data accuracy. Eager to leverage strong GAAP foundation and technical proficiency to contribute to a fast-paced corporate finance team. Currently studying to sit for the Certified Public Accountant (CPA) exam.
+
+Experience
+Junior Accountant
+"Desert Bloom" Event Management, Phoenix, AZJanuary 2024 – Present
+
+Managed the end-to-end Accounts Payable (AP) process for 50+ vendors, ensuring timely invoice processing, three-way matching, and managing weekly payment schedules.
+Prepared and posted 40+ routine and non-routine journal entries monthly, including accruals for operating expenses and prepaid asset amortization.
+Assisted the Accounting Manager in the month-end close process, successfully reconciling six key balance sheet accounts, including bank accounts and customer deposits.
+Maintained detailed records of property and equipment, calculating and recording monthly depreciation using the straight-line method.
+Supported external auditors by preparing organized documentation and supporting schedules for payroll liabilities and cash balances.
+Accounting Intern
+Swift Financial Consulting, Tempe, AZMay 2023 – December 2023
+
+Provided administrative and technical support for bookkeeping activities, processing 15-20 transactions daily for multiple small business clients.
+Developed intermediate proficiency in Microsoft Excel, utilizing VLOOKUP and Pivot Tables to aggregate large data sets for budget vs. actual variance analysis.
+Maintained confidential client files and ensured adherence to data retention policies.
+Education
+Bachelor of Science in Accounting
+Arizona State University (ASU), Tempe, AZGraduation: December 2023
+
+GPA: 3.8/4.0, Cum Laude
+Relevant Coursework: Advanced Financial Accounting, Federal Taxation, Auditing, Business Ethics
+Skills & Technical Proficiency
+Accounting Software: QuickBooks Online (Advanced), Microsoft Dynamics GP (Basic exposure/training), Sage 50.
+Data Analysis: Microsoft Excel (Advanced), Microsoft Office Suite, Google Sheets.
+Knowledge: Strong understanding of U.S. GAAP, Financial Reporting, and General Ledger Reconciliation.
+Certifications: CPA Candidate (Planning to sit for the first exam section in Q2 2025).
+Awards & Recognition
+ASU Dean's List (2022, 2023)
+Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
+  
+  // --- Function Definitions ---
+  
+  const handleLoadExample = useCallback(() => {
+    setJobDescription(fullExampleJD);
+    setResume(exampleResume);
+    setCandidateName(extractCandidateName(exampleResume)); 
+    setError(null); setAnalysis(null); 
+    setInviteDraft(''); setOutreachDraft(''); 
+    setActiveTool(null);
+  }, [fullExampleJD, exampleResume]); 
+
+  const clearAll = useCallback(() => {
+    setJobDescription(''); setResume(''); setAnalysis(null); 
+    setInviteDraft(''); setOutreachDraft(''); 
+    setActiveTool(null); setError(null); setCandidateName('');
+    setShowPaywallModal(false);
+    saveUsageCount(0);
+    setScreensUsed(0);
+  }, []);
+
+  // --- File Parsing Handlers ---
+  const readPdf = async (arrayBuffer) => {
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          text += strings.join(" ") + "\n";
+      }
+      return text;
+  };
+
+  const readDocx = async (arrayBuffer) => {
+      const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      return result.value;
+  };
+
+  const processText = (text, type, fileName) => {
+      let cleanedText = text.replace(/[\uFFFD\u0000-\u001F\u007F-\u009F\u200B]/g, ' ');
+      cleanedText = cleanedText.replace(/PK\x03\x04.+/g, ''); 
+      cleanedText = cleanedText.replace(/[^a-zA-Z0-9\s.,!?:;*&@#%/\-\{\}\[\]\n\r]/g, ' ').trim(); 
+      cleanedText = cleanedText.replace(/\s{2,}/g, ' ');
+
+      if (!cleanedText || cleanedText.length < 50) {
+          setError(`Could not extract clean text from ${fileName}. Please copy/paste.`);
+          setLoading(false);
+          return;
+      }
+      
+      if (type === 'jd') {
+          setJobDescription(cleanedText);
+          setActiveTab('resume');
+      } else {
+          setResume(cleanedText);
+          const name = extractCandidateName(cleanedText);
+          setCandidateName(name);
+      }
+      setLoading(false);
+  };
+  
+  const handleFileUpload = useCallback(async (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setLoading(true);
+    setError(null);
+
+    const isBinaryFile = file.type.includes('pdf') || file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc');
+
+    if (isBinaryFile && !libsLoaded) {
+        setError("File parsers are still loading. Please wait a moment and try again.");
+        setLoading(false);
+        e.target.value = null;
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        let text = "";
+        const fileType = file.type;
+
+        try {
+            if (isBinaryFile) {
+                if (fileType === "application/pdf" && window.pdfjsLib) {
+                    text = await readPdf(event.target.result);
+                } else if (fileType.includes("wordprocessingml.document") && window.mammoth) {
+                    text = await readDocx(event.target.result);
+                } else {
+                    text = event.target.result;
+                }
+                
+            } else {
+                text = event.target.result;
+            }
+            
+            processText(text, type, file.name);
+
+        } catch (err) {
+            console.error("File parsing error:", err);
+            setError(`Error reading ${file.name}. Please copy text manually.`);
+            setLoading(false);
+        }
+    };
+    
+    if (isBinaryFile || file.type.includes('octet-stream')) {
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.readAsText(file);
+    }
+    e.target.value = null;
+  }, [libsLoaded]);
+
+
+  const generateContent = async (toolType, prompt) => {
+    setToolLoading(true); setError(null); setActiveTool(toolType);
+    try {
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        if (toolType === 'invite') setInviteDraft(text);
+        if (toolType === 'outreach') setOutreachDraft(text);
+      } else {
+        setError("AI returned an empty response for drafting.");
+      }
+    } catch (err) { setError(`Failed to generate content.`); } finally { setToolLoading(false); }
+  };
+
+  const handleDraft = useCallback((type) => {
+      if (!resume.trim() || !jobDescription.trim()) { setError("Please enter both a JD and Resume."); return; }
+      let prompt = "";
+      const name = extractCandidateName(resume);
+      setCandidateName(name);
+
+      const basePrompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate name: ${candidateName || name}.`;
+
+      if (type === 'invite') {
+          prompt = `${basePrompt} Write a professional email inviting the candidate to a 30-minute screening interview. Ensure it includes a Subject Line and Body. Mention a specific skill or experience from their resume that relates to the JD requirements.`;
+      } else if (type === 'outreach') {
+           prompt = `${basePrompt} Write a professional, engaging outreach email to a passive candidate. The goal is to start a conversation about an open role based on their resume. Mention specific strengths from their resume that align with the job description. Keep it concise and persuasive.`;
+      }
+      
+      prompt += `\nJD: ${jobDescription}\nResume: ${resume}`;
+      generateContent(type, prompt);
+  }, [resume, jobDescription, selectedTone, candidateName]);
+
+  const setDrafts = (type, value) => {
+      if (type === 'invite') setInviteDraft(value);
+      if (type === 'outreach') setOutreachDraft(value);
+  };
+  
+  const handleSubscriptionSuccess = () => {
+    // This is currently a free app, but keeping the function stubbed for future monetization
+    // saveUsageCount(0);
+    // setScreensUsed(0);
+    // setShowPaywallModal(false);
+    // setError(null);
+  };
+
+  const handleSubscribe = async () => {
+    // This is currently a free app, but keeping the function stubbed for future monetization
+  };
+  
+  // Analyze logic (same as before)
+  const handleAnalyze = async () => {
+    if (!jobDescription.trim() || !resume.trim()) { setError("Please fill in Job Description and Resume."); setActiveTab('jd'); return; }
+    
+    // No more freemium check for now - App is free to launch
+    
+    const extractedName = extractCandidateName(resume);
+    setCandidateName(extractedName);
+    setLoading(true); setError(null); setAnalysis(null); 
+
+    try {
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        method: 'POST', 
+        headers: { 
+            'Content-Type': 'application/json'
+        }, 
+        body: JSON.stringify({ 
+            contents: [{ parts: [{ text: `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}` }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        })
+      });
+      
+      if (!response.ok) {
+          throw new Error(`AI Request failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if(textResult) {
+        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
+        const parsedResult = JSON.parse(cleanJson);
+        
+        let score = 0;
+        if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
+        else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
+        
+        const newEntry = { jdHash: currentJdHash, name: extractedName, score: score, summary: parsedResult.fitSummary };
+        if (extractedName !== 'Unnamed Candidate' && score > 0) {
+            updateLeaderboardUtility(newEntry);
+        }
+        
+        setAnalysis({
+            matchScore: score,
+            fitSummary: parsedResult.fitSummary || "Analysis unavailable.",
+            strengths: parsedResult.strengths || [],
+            gaps: parsedResult.gaps || [],
+            interviewQuestions: parsedResult.interviewQuestions || [],
+        });
+        
+        setActiveTab('resume');
+        
+      } else throw new Error("No analysis returned from AI.");
+    } catch (err) { 
+        console.error(err); 
+        setError("Failed to analyze. Ensure resume text is clean."); 
+    } finally { 
+        setLoading(false); 
+    }
+  };
+  
+  const currentDraftContent = useMemo(() => {
+    if (activeTool === 'invite') return inviteDraft;
+    if (activeTool === 'outreach') return outreachDraft;
+    return '';
+  }, [activeTool, inviteDraft, outreachDraft]);
+
+
+  return (
+    <div className="min-h-screen bg-gray-100 font-sans text-slate-900">
+      {/* Load external parsing libraries (PDF.js and Mammoth.js) are already included */}
+
+      <style>{`@media print { body > #root > div > main { max-width: none !important; margin: 0 !important; padding: 0 !important; } .print-area { width: 8.5in; height: 11in; padding: 0.5in; } .print\\:hidden { display: none !important; } } .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10 print:hidden">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2"><Logo /><h1 className="font-bold text-xl tracking-tight text-slate-800">Core Creativity<span className="text-[#2B81B9]">AI</span></h1></div>
+          <div className="flex items-center gap-4">
+              <div className="text-sm font-medium bg-[#52438E] text-white px-3 py-1 rounded-full shadow-sm hidden sm:block">Recruit-IQ / Candidate Match Analyzer</div>
+          </div>
+        </div>
+      </header>
+      
+      {copyFeedback && <div className="fixed top-4 right-1/2 translate-x-1/2 mt-2 z-50 px-4 py-2 rounded-xl text-white font-medium shadow-lg bg-emerald-500">{copyFeedback}</div>}
+      
+      <main className="max-w-6xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Input Column */}
+        <div className="flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+            <div className="flex border-b border-slate-200">
+              {['jd', 'resume'].map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === tab ? 'text-[#52438E] bg-[#52438E]/5' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  {tab === 'jd' ? <Briefcase size={16} /> : <FileText size={16} />} {tab === 'jd' ? 'Upload or Paste Job Description' : 'Upload or Paste Candidate Resume'}
+                  {((tab === 'jd' && jobDescription) || (tab === 'resume' && resume)) && <Check size={14} className="text-emerald-500" />}
+                  {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#52438E]" />}
+                </button>
+              ))}
+            </div>
+            <div className="p-3 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center print:hidden">
+                <label className={`flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border-2 border-transparent text-[#2B81B9] text-xs font-semibold hover:border-[#00c9ff] transition-all shadow-md hover:shadow-lg ${!libsLoaded ? 'opacity-50 cursor-wait' : ''}`} style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderImage: 'linear-gradient(to right, #00c9ff, #2B81B9) 1' }}>
+                    <Download size={14} className="text-[#00c9ff]" style={{ color: '#00c9ff' }} />
+                    <span style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Upload File (.pdf, .docx, .txt)</span>
+                    <input type="file" className="hidden" accept=".txt, .md, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => handleFileUpload(e, activeTab === 'jd' ? 'jd' : 'resume')} disabled={!libsLoaded} />
+                </label>
+                <div className="flex gap-2 items-center">
+                    <button onClick={handleLoadExample} className="text-xs font-medium text-[#2B81B9] hover:text-[#00c9ff] px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">Click for Example</button>
+                    {(jobDescription || resume) && <button onClick={clearAll} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-1.5 hover:bg-slate-100 rounded-md transition-colors">Clear All</button>}
+                </div>
+            </div>
+            {/* Candidate Name Display */}
+            {candidateName && candidateName !== 'Unnamed Candidate' && activeTab === 'resume' && (
+                 <div className="p-3 border-b border-slate-100 bg-white">
+                    <div className="text-xs font-medium text-slate-600 mb-1">Candidate Name:</div>
+                    <div className="text-sm font-bold text-[#52438E]">{candidateName}</div>
+                </div>
+            )}
+            
+            {/* Text Area Container */}
+            <div className="flex-1 relative">
+              <textarea className="w-full h-full p-5 resize-none outline-none text-slate-600 text-sm leading-relaxed placeholder:text-slate-300 bg-white" placeholder={activeTab === 'jd' ? "Paste the job description here..." : "Paste the candidate's resume here..."} value={activeTab === 'jd' ? jobDescription : resume} onChange={(e) => { activeTab === 'jd' ? setJobDescription(e.target.value) : setResume(e.target.value); }} autoFocus />
+            </div>
+
+            {/* Action Area */}
+            <div className="p-4 border-t border-slate-100 bg-white print:hidden">
+              <button onClick={handleAnalyze} disabled={loading || !jobDescription || !resume} className={`w-full py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${loading || !jobDescription || !resume ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#00c9ff] to-[#2B81B9] text-white hover:opacity-90 shadow-lg shadow-[#00c9ff]/40'}`}>
+                {loading ? (<><Loader2 className="w-5 h-5 animate-spin" />Screening Candidate...</>) : (<><Sparkles size={18} />Screen Candidate</>)}
+              </button>
+              {error && <div className="mt-3 text-red-500 text-sm flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Output Column */}
+        <div className="flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
+            {!analysis ? (
+                <div className="h-full bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Search size={32} className="text-slate-300" /></div>
+                    <h3 className="text-lg font-medium text-slate-600 mb-2">Ready for Screening</h3>
+                    <p className="max-w-xs text-sm">Paste or upload a Job Description and Candidate Resume on the left to begin the AI screening process.</p>
+                </div>
+            ) : (
+                <div className="h-full flex flex-col overflow-hidden">
+                    {/* Result Scrollable Area */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        
+                        <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(generateSummaryText())} />
+                        <Leaderboard jdHash={currentJdHash} currentCandidateName={candidateName} score={analysis.matchScore} onClear={handleClearLeaderboard} leaderboardData={leaderboardData} />
+                        
+                        {analysis.interviewQuestions && analysis.interviewQuestions.length > 0 && <InterviewQuestionsSection questions={analysis.interviewQuestions} />}
+                        
+                        <CommunicationTools 
+                            activeTool={activeTool}
+                            setActiveTool={setActiveTool}
+                            draftContent={currentDraftContent}
+                            handleDraft={handleDraft} 
+                            handleCopy={handleCopy} 
+                            setDrafts={setDrafts}
+                            selectedTone={selectedTone}
+                            setSelectedTone={setSelectedTone}
+                            toolLoading={toolLoading}
+                        />
+                        
+                    </div>
+                </div>
+            )}
+        </div>
+      </main>
+    </div>
+  );
 }
