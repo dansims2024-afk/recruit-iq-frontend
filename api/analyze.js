@@ -5,7 +5,6 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
-
 // Mock function representing the actual Generative AI SDK call
 async function callGeminiAPI(prompt) {
     // This function is secure because it uses the GEMINI_API_KEY which only Vercel knows
@@ -19,6 +18,7 @@ async function callGeminiAPI(prompt) {
     });
     
     if (!response.ok) {
+        // If the key is invalid, Google returns a 400 or 403, which this handles
         throw new Error(`Gemini API call failed with status: ${response.status} - ${await response.text()}`);
     }
     
@@ -29,8 +29,14 @@ async function callGeminiAPI(prompt) {
 // 2. Main handler for the proxy endpoint: /api/analyze
 export default async function analyzeCandidate(req, res) {
     
-    // --- Phase 1: Security and Data Validation ---
+    // Check if key is even loaded; if not, crash gracefully and return internal error
+    if (!GEMINI_API_KEY) {
+        console.error("CRITICAL: GEMINI_API_KEY environment variable is missing or null.");
+        return res.status(500).json({ error: 'AI Service Misconfigured: API Key missing on server.' });
+    }
     
+    // --- Phase 1: Security and Data Validation ---
+    // (Existing logic remains)
     const { jobDescription, resume } = req.body;
 
     if (!jobDescription || !resume) {
@@ -39,7 +45,7 @@ export default async function analyzeCandidate(req, res) {
 
     // --- Phase 2: Build the Prompt ---
     const prompt = `
-      Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter.
+      Analyze the Candidate Resume against the Job Description. Act as an expert Recruiter.
       Return a valid JSON object (and ONLY the JSON object) with the following structure:
       { 
         "matchScore": number (0-100), 
@@ -49,7 +55,7 @@ export default async function analyzeCandidate(req, res) {
         "interviewQuestions": ["str"] 
       }
       
-      CRITICAL INSTRUCTION: Ensure all "interviewQuestions" are designed to elicit a quantifiable answer.
+      CRITICAL INSTRUCTION: Ensure all "interviewQuestions" are designed to elicit a **quantifiable answer** regarding results, scope, frequency, or impact (e.g., "How much?", "How often?", "What quantifiable improvement did you make?").
 
       Job Description: ${jobDescription}
       Candidate Resume: ${resume}
@@ -66,12 +72,12 @@ export default async function analyzeCandidate(req, res) {
         // 4. Return the analysis result to the frontend
         res.status(200).json({ 
             analysis: parsedResult,
-            // We are not tracking usage now, but this placeholder is here for future monetization
             newUsageCount: 0 
         });
 
     } catch (error) {
-        console.error('Proxy Error during analysis:', error);
+        // Log the specific error from the AI call
+        console.error('Proxy Error during analysis:', error.message || error);
         res.status(500).json({ error: 'Failed to process analysis request due to a server or AI error.' });
     }
 }
