@@ -1,22 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, UserPlus, UserX, Trash2, Zap, Download, Loader2, FileWarning, LogIn, LogOut, Building, Mail } from 'lucide-react';
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, UserPlus, UserX, Trash2, Zap, Download, Loader2, FileWarning, Mail } from 'lucide-react';
 
-// NOTE: Using localStorage for leaderboard persistence, which is available in a single-file environment.
+// NOTE: Using localStorage for leaderboard persistence.
 const localStorageKey = 'hm_copilot_leaderboard_data';
-const usageKey = 'hm_copilot_screen_count';
-const userSessionKey = 'hm_copilot_user_session';
-const usersDbKey = 'hm_copilot_users_db'; // NEW: Simulate a user database
-const MAX_FREE_SCREENS = 3;
 
-// API Configuration
-// NOTE: For this prototype to work client-side without a real backend, we point directly to the Gemini API.
-// In a production environment, PROXY_ENDPOINT_URL would be your secure server endpoint (e.g., https://your-domain.com/api/analyze).
+// --- CONFIGURATION ---
+// IMPORTANT: This API URL must be replaced with your secure Vercel Proxy URL 
+// (e.g., '/api/analyze') once the Vercel Serverless Function is deployed.
+// The client-side apiKey is left empty as a best practice placeholder.
 const apiKey = ""; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-
-// Placeholder constants for future backend endpoints
-const SUBSCRIBE_ENDPOINT_URL = 'https://your-domain.com/api/subscribe'; 
-const USER_ID_PLACEHOLDER = 'manager-demo-user-12345'; 
 
 // --- Brand Colors ---
 const BRAND = {
@@ -57,71 +50,6 @@ const saveLeaderboard = (data) => {
         console.error("Error saving leaderboard:", e);
     }
 };
-
-const getUsageCount = () => {
-    try {
-        const count = localStorage.getItem(usageKey);
-        return parseInt(count, 10) || 0;
-    } catch (e) {
-        console.error("Error loading usage count:", e);
-        return 0;
-    }
-};
-
-const saveUsageCount = (count) => {
-    try {
-        localStorage.setItem(usageKey, count.toString());
-    } catch (e) {
-        console.error("Error saving usage count:", e);
-    }
-};
-
-const getUserSession = () => {
-    try {
-        const session = localStorage.getItem(userSessionKey);
-        return session ? JSON.parse(session) : null;
-    } catch (e) {
-        return null;
-    }
-};
-
-const saveUserSession = (user) => {
-    try {
-        if (user) localStorage.setItem(userSessionKey, JSON.stringify(user));
-        else localStorage.removeItem(userSessionKey);
-    } catch (e) {
-        console.error("Error saving user session", e);
-    }
-};
-
-// NEW: User Database Utilities for realistic auth simulation
-const getUsersDb = () => {
-    try {
-        const db = localStorage.getItem(usersDbKey);
-        return db ? JSON.parse(db) : [];
-    } catch (e) { return []; }
-};
-
-const saveUserToDb = (user) => {
-    const users = getUsersDb();
-    // Check if email exists
-    if (users.find(u => u.email === user.email)) {
-        throw new Error("User already exists");
-    }
-    users.push(user);
-    localStorage.setItem(usersDbKey, JSON.stringify(users));
-};
-
-const authenticateUser = (email, password) => {
-    const users = getUsersDb();
-    // Simple password check (In production, passwords would be hashed)
-    const user = users.find(u => u.email === email && u.password === password);
-    if (!user) throw new Error("Invalid email or password");
-    // Return user without password
-    const { password: _, ...safeUser } = user;
-    return safeUser;
-};
-
 
 const extractCandidateName = (resumeContent) => {
     if (!resumeContent) return 'Unnamed Candidate';
@@ -207,200 +135,11 @@ const Logo = () => (
     <path d="M 12 55 C 10 45, 12 35, 18 25 L 20 28 C 15 35, 4 45, 16 52 Z" fill={BRAND.cyan} />
     <path d="M 30 78 C 20 75, 15 65, 15 55 L 12 58 C 15 70, 25 80, 35 80 Z" fill={BRAND.primaryBlue} />
 
-    <path d="M 55 85 C 75 85, 90 65, 85 40 C 84 32, 75 25, 65 25, 60 25, 65 30, 70 35 C 80 50, 75 70, 55 75 C 50 77, 45 80, 55 85 Z" fill="url(#swirlDeep)" />
+    <path d="M 55 85 C 75 85, 90 65, 85 40 C 84 32, 75 25, 65 25 C 60 25, 65 30, 70 35 C 80 50, 75 70, 55 75 C 50 77, 45 80, 55 85 Z" fill="url(#swirlDeep)" />
     <path d="M 88 45 C 90 55, 88 65, 82 75 L 80 72 C 85 65, 86 55, 84 48 Z" fill={BRAND.orchid} />
     <path d="M 70 22 C 80 25, 85 35, 85 45 L 88 42 C 85 30, 75 20, 65 20 Z" fill={BRAND.deepPurple} />
   </svg>
 );
-
-const AuthModal = ({ onClose, onLogin, initialIsSignUp }) => {
-    const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
-    const [fullName, setFullName] = useState('');
-    const [companyName, setCompanyName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-
-        // Simulate API latency
-        setTimeout(() => {
-            try {
-                if (isSignUp) {
-                    const newUser = {
-                        id: 'user_' + Math.random().toString(36).substr(2, 9),
-                        email: email.toLowerCase(),
-                        password: password, 
-                        name: fullName,
-                        company: companyName,
-                        plan: 'free'
-                    };
-                    saveUserToDb(newUser);
-                    const { password: _, ...safeUser } = newUser;
-                    onLogin(safeUser);
-                } else {
-                    const user = authenticateUser(email.toLowerCase(), password);
-                    onLogin(user);
-                }
-            } catch (err) {
-                setError(err.message);
-                setLoading(false);
-            }
-        }, 1000);
-    };
-
-    const toggleMode = () => {
-        setIsSignUp(!isSignUp);
-        setError(null);
-    }
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 print:hidden">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md animate-in zoom-in duration-300 relative border-t-4 border-[#52438E]">
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-[#52438E]"><X size={20} /></button>
-                
-                <h2 className="text-2xl font-bold text-[#2B81B9] mb-2 text-center">
-                    {isSignUp ? 'Create Your Profile' : 'Welcome Back'}
-                </h2>
-                <p className="text-slate-500 text-sm text-center mb-6">
-                    {isSignUp ? 'Join Recruit-IQ to save candidates and track your hiring.' : 'Log in to access your dashboard.'}
-                </p>
-
-                {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 flex items-center gap-2">
-                        <AlertCircle size={16} /> {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {isSignUp && (
-                        <>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Full Name</label>
-                            <div className="relative">
-                                <User size={16} className="absolute left-3 top-3 text-[#b2acce]" />
-                                <input 
-                                    type="text" 
-                                    required
-                                    className="w-full p-3 pl-10 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
-                                    placeholder="Jane Doe"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Company Name</label>
-                            <div className="relative">
-                                <Building size={16} className="absolute left-3 top-3 text-[#b2acce]" />
-                                <input 
-                                    type="text" 
-                                    required
-                                    className="w-full p-3 pl-10 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
-                                    placeholder="Acme Corp"
-                                    value={companyName}
-                                    onChange={(e) => setCompanyName(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        </>
-                    )}
-                    
-                    <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email Address</label>
-                        <input 
-                            type="email" 
-                            required
-                            className="w-full p-3 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
-                            placeholder="you@company.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Password</label>
-                        <input 
-                            type="password" 
-                            required
-                            className="w-full p-3 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" 
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </div>
-                    <button 
-                        type="submit" 
-                        disabled={loading}
-                        className="w-full py-3 bg-[#52438E] text-white rounded-xl font-bold hover:opacity-90 transition-all flex justify-center gap-2 items-center shadow-md"
-                    >
-                        {loading ? <Loader2 className="animate-spin w-5 h-5" /> : (isSignUp ? 'Create Profile' : 'Log In')}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center text-sm text-slate-500">
-                    {isSignUp ? "Already have an account? " : "Don't have an account? "}
-                    <button onClick={toggleMode} className="text-[#2B81B9] font-bold hover:underline">
-                        {isSignUp ? 'Log In' : 'Create Profile'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const PaywallModal = ({ MAX_FREE_SCREENS, screensUsed, onClose, onSubscribe, currentUser, onOpenAuth }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 print:hidden">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center animate-in zoom-in duration-300 border-t-4 border-[#52438E]">
-            <Zap size={36} className="text-[#8C50A1] mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-[#2B81B9] mb-2">Unlock Unlimited Screening</h3>
-            <p className="text-slate-600 mb-6">
-                You've hit the limit of **{MAX_FREE_SCREENS} free candidate analyses** ({screensUsed}/{MAX_FREE_SCREENS} used).
-            </p>
-            
-            {!currentUser ? (
-                <div className="space-y-4">
-                     <div className="bg-[#b2acce]/20 border border-[#b2acce] p-4 rounded-lg text-sm text-[#2B81B9] mb-4 font-medium">
-                        Please create a profile or log in to subscribe to the Pro plan.
-                     </div>
-                     <button
-                        onClick={onOpenAuth}
-                        className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#52438E] to-[#8C50A1] hover:opacity-90 shadow-lg transition-all transform active:scale-[0.98]"
-                    >
-                        Create Profile / Log In
-                    </button>
-                     <button onClick={onClose} className="text-[#b2acce] text-sm hover:text-slate-600 underline">Not now</button>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    <button
-                        onClick={onSubscribe}
-                        className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#00c9ff] to-[#2B81B9] hover:opacity-90 shadow-lg shadow-[#00c9ff]/40 transition-all transform active:scale-[0.98]"
-                    >
-                        Unlock Unlimited Screening ($29/Month)
-                    </button>
-                    <button
-                        onClick={() => {
-                            window.open(`mailto:sales@corecreativity.ai?subject=Inquiry%20about%20Team%20License%20for%20Recruit-IQ`, '_blank');
-                            onClose();
-                        }}
-                        className="w-full py-3 rounded-xl font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 transition-colors border border-[#b2acce]"
-                    >
-                        Contact Our Team
-                    </button>
-                </div>
-            )}
-            
-            <div className="mt-4 text-xs text-[#b2acce]">
-                (Clicking **Unlock** simulates payment & resets counter)
-            </div>
-        </div>
-    </div>
-);
-
 
 const MatchScoreCard = ({ analysis, onCopySummary }) => {
   const score = analysis.matchScore || 0;
@@ -409,9 +148,9 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
   const gaps = Array.isArray(analysis.gaps) ? analysis.gaps : [];
   
   const isHighFit = score >= 80;
-  const colorClass = isHighFit ? 'from-[#00c9ff] to-[#2B81B9]' : // High fit -> Brand Blues
-                     score >= 50 ? 'from-[#8C50A1] to-[#52438E]' : // Medium fit -> Brand Purples
-                     'from-red-500 to-red-700'; // Low fit -> Red (Standard)
+  const colorClass = isHighFit ? 'from-[#00c9ff] to-[#2B81B9]' : 
+                     score >= 50 ? 'from-[#8C50A1] to-[#52438E]' : 
+                     'from-red-500 to-red-700';
 
   return (
     <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
@@ -584,7 +323,8 @@ const CommunicationTools = ({
   setSelectedTone, 
   toolLoading 
 }) => (
-  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6">
+    // Applied a visible light purple background
+  <div className="bg-[#f0e4f5] rounded-2xl shadow-md border border-[#8C50A1]/50 p-6">
       <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><MessageCircle size={16} className="text-[#52438E]" /> Manager Actions</h4>
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
@@ -593,8 +333,15 @@ const CommunicationTools = ({
           ))}
       </div>
       <div className="grid grid-cols-2 gap-3 mb-4">
-          <button onClick={() => handleDraft('invite')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#00c9ff] text-slate-700 flex flex-col items-center gap-1 text-[#2B81B9] font-semibold hover:bg-[#00c9ff]/5 transition-all"><UserPlus size={16} className="text-[#00c9ff]" /> Custom Interview Email (Applied to Job Posting)</button>
-          <button onClick={() => handleDraft('outreach')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#8C50A1] text-slate-700 flex flex-col items-center gap-1 text-[#8C50A1] font-semibold hover:bg-[#8C50A1]/5 transition-all"><Mail size={16} className="text-[#8C50A1]" /> Sourcing Email Draft (Cold Outreach)</button>
+          {/* UPDATED BUTTON 1: Applied Candidate Interview Email */}
+          <button onClick={() => handleDraft('invite')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#00c9ff] text-slate-700 flex flex-col items-center gap-1 text-[#2B81B9] font-semibold hover:bg-[#00c9ff]/5 transition-all">
+              <UserPlus size={16} className="text-[#00c9ff]" /> Custom Interview Email (Applied to Job Posting)
+          </button>
+          
+          {/* UPDATED BUTTON 2: Cold Outreach / Sourcing Email */}
+          <button onClick={() => handleDraft('outreach')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#8C50A1] text-slate-700 flex flex-col items-center gap-1 text-[#8C50A1] font-semibold hover:bg-[#8C50A1]/5 transition-all">
+              <Mail size={16} className="text-[#8C50A1]" /> Sourcing Email Draft (Cold Outreach)
+          </button>
       </div>
       {toolLoading && (
           <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4">
@@ -602,8 +349,10 @@ const CommunicationTools = ({
           </div>
       )}
       {draftContent && activeTool && (
-          <div className="bg-slate-50 border border-[#b2acce] rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+          // Inner draft preview should remain white for readability
+          <div className="bg-white border border-[#b2acce] rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
               <div className="mb-2 flex justify-between items-center">
+                  {/* UPDATED DRAFT PREVIEW TITLE */}
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft (Cold Outreach)' : 'Custom Interview Email (Applied to Job Posting)'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
@@ -613,7 +362,7 @@ const CommunicationTools = ({
                   className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" 
               />
               <div className="mt-3 flex justify-end">
-                  <button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-white border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button>
+                  <button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button>
               </div>
           </div>
       )}
@@ -638,30 +387,12 @@ export default function App() {
   const [toolLoading, setToolLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState('professional'); 
   const [libsLoaded, setLibsLoaded] = useState(false);
-  const [screensUsed, setScreensUsed] = useState(getUsageCount()); 
-  const [showPaywallModal, setShowPaywallModal] = useState(false);
-  
-  // Authentication State
-  const [currentUser, setCurrentUser] = useState(getUserSession());
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authInitialSignUp, setAuthInitialSignUp] = useState(false);
 
-  // Initialize User from Local Storage
+  // Set global copy feedback setter (used by the global handleCopy function)
   useEffect(() => {
       setCopyFeedbackGlobal = setCopyFeedback;
   }, []);
   
-  const handleLogin = (user) => {
-      setCurrentUser(user);
-      saveUserSession(user);
-      setShowAuthModal(false);
-  };
-  
-  const handleLogout = () => {
-      setCurrentUser(null);
-      saveUserSession(null);
-  };
-
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
   const [leaderboardData, setLeaderboardData] = useState(getLeaderboard()); 
 
@@ -759,6 +490,7 @@ Comprehensive health, dental, and vision insurance plans.
 Casual dress code and flexible work arrangements (e.g., hybrid schedule).
 On-site gym and complimentary snacks/beverages.`;
   
+  // Example Resume data
   const exampleResume = `Soda McTasty
 (555) 123-4567 | soda.mctasty@email.com | Phoenix, AZ 85001 | https://www.google.com/search?q=linkedin.com/in/sodamctasty
 
@@ -810,10 +542,31 @@ Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null); setError(null); setCandidateName('');
-    setShowPaywallModal(false);
-    saveUsageCount(0);
-    setScreensUsed(0);
   }, []);
+
+  const generateSummaryText = () => {
+    if (!analysis) return "No analysis available.";
+    
+    let summary = `Candidate: ${candidateName} | Score: ${analysis.matchScore}%\n`;
+    summary += `Summary: ${analysis.fitSummary}\n\n`;
+    
+    if (analysis.strengths && analysis.strengths.length > 0) {
+        summary += "--- Strengths ---\n";
+        summary += analysis.strengths.map(s => `- ${s}`).join('\n') + '\n\n';
+    }
+    
+    if (analysis.gaps && analysis.gaps.length > 0) {
+        summary += "--- Red Flags / Gaps ---\n";
+        summary += analysis.gaps.map(g => `- ${g}`).join('\n') + '\n\n';
+    }
+    
+    if (analysis.interviewQuestions && analysis.interviewQuestions.length > 0) {
+        summary += "--- Suggested Interview Questions ---\n";
+        summary += analysis.interviewQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+    }
+    
+    return summary;
+  };
 
   // --- File Parsing Handlers ---
   const readPdf = async (arrayBuffer) => {
@@ -912,6 +665,8 @@ Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
   const generateContent = async (toolType, prompt) => {
     setToolLoading(true); setError(null); setActiveTool(toolType);
     try {
+      // NOTE: In production, this fetch should also be routed through a secure Vercel proxy, 
+      // similar to handleAnalyze. For local prototyping, we use the direct API.
       const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
       });
@@ -935,9 +690,11 @@ Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
       const basePrompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate name: ${candidateName || name}.`;
 
       if (type === 'invite') {
-          prompt = `${basePrompt} Write a professional email inviting the candidate to a 30-minute screening interview. Ensure it includes a Subject Line and Body. Mention a specific skill or experience from their resume that relates to the JD requirements.`;
+          // *** UPDATED PROMPT FOR FORMATTING ***
+          prompt = `${basePrompt} Write a professional email inviting the candidate to a 30-minute screening interview. Ensure it includes a Subject Line and Body. Use Markdown for **bolding** key terms. Mention a specific skill or experience from their resume that relates to the JD requirements. The candidate applied to this job posting.`;
       } else if (type === 'outreach') {
-           prompt = `${basePrompt} Write a professional, engaging outreach email to a passive candidate. The goal is to start a conversation about an open role based on their resume. Mention specific strengths from their resume that align with the job description. Keep it concise and persuasive.`;
+           // *** UPDATED PROMPT FOR FORMATTING ***
+           prompt = `${basePrompt} Write a professional, engaging outreach email to a passive candidate. The goal is to start a conversation about an open role based on their resume. Use Markdown for **bolding** key skills or points of interest. Keep it concise and persuasive.`;
       }
       
       prompt += `\nJD: ${jobDescription}\nResume: ${resume}`;
@@ -949,29 +706,19 @@ Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
       if (type === 'outreach') setOutreachDraft(value);
   };
   
-  const handleSubscriptionSuccess = () => {
-    // This is currently a free app, but keeping the function stubbed for future monetization
-    // saveUsageCount(0);
-    // setScreensUsed(0);
-    // setShowPaywallModal(false);
-    // setError(null);
-  };
-
-  const handleSubscribe = async () => {
-    // This is currently a free app, but keeping the function stubbed for future monetization
-  };
   
-  // Analyze logic (same as before)
+  // Analyze logic (This function must be updated to call the Vercel proxy URL in production)
   const handleAnalyze = async () => {
     if (!jobDescription.trim() || !resume.trim()) { setError("Please fill in Job Description and Resume."); setActiveTab('jd'); return; }
-    
-    // No more freemium check for now - App is free to launch
     
     const extractedName = extractCandidateName(resume);
     setCandidateName(extractedName);
     setLoading(true); setError(null); setAnalysis(null); 
 
     try {
+      // NOTE: IN PRODUCTION, THIS MUST BE REPLACED WITH THE SECURE VERCEL PROXY CALL:
+      // const response = await fetch('/api/analyze', { method: 'POST', body: JSON.stringify({ jobDescription, resume }) });
+      
       const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
         headers: { 
