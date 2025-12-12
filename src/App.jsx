@@ -731,6 +731,7 @@ Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
           const errorData = await response.json().catch(() => ({ error: 'Unknown Proxy Error' }));
           
           // Throw an error with the response status code and the server's error message
+          // This ensures the website displays the specific status (400, 403, 500)
           throw new Error(`Proxy Error [Status: ${response.status}]: ${errorData.error || response.statusText || 'Check server logs.'}`);
       }
       
