@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// KEEP THIS set to TRUE to test in the Canvas/Demo window without crashing.
-// Set to FALSE only when deploying to a live server with a valid API Key.
-const ENABLE_DEMO_MODE = true; 
+// Set to TRUE to test in the Canvas/Demo window without crashing.
+// Set to FALSE when deploying to a live server to use the Real API.
+const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
+
+// *** PASTE YOUR API KEY HERE FOR LIVE DEPLOYMENT ***
 const apiKey = ""; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -241,7 +243,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
 const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboardData }) => {
     const currentList = leaderboardData[jdHash] || [];
     const sortedList = currentList.sort((a, b) => b.score - a.score).slice(0, 10);
-    if (sortedList.length === 0) return (<div className="text-center py-8 bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6"><Zap size={24} className="text-[#00c9ff] mx-auto mb-2" /><p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p></div>);
+    if (sortedList.length === 0) return (<div className="text-center py-8 bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6"><Zap size={24} className="text-[#00c9ff]" mx-auto mb-2 /><p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p></div>);
     const handleDeleteLeaderboard = () => { if (window.confirm("Are you sure you want to clear the entire leaderboard for this Job Description? This action cannot be undone.")) { onClear(jdHash); } };
     
     return (
@@ -455,75 +457,98 @@ export default function App() {
   const generateContent = useCallback(async (toolType, prompt) => {
     setToolLoading(true); setError(null); setActiveTool(toolType);
     
-    const name = extractCandidateName(resume);
-    const tone = selectedTone;
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // --- DEMO MODE CHECK FOR EMAIL GENERATION ---
+    if (ENABLE_DEMO_MODE || (window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:'))) {
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+        const name = extractCandidateName(resume) || "Candidate";
+        const mockInvite = `Subject: Interview Invitation: ${name}
 
-    // Hardcoded mock response for demo
-    const mockInvite = `Subject: Interview Invitation: Staff Accountant at Stellar Dynamics Corp.
+Hi ${name},
 
-Hi **${name}**,
-
-Thank time applying for the Staff Accountant position at Stellar Dynamics Corp. Your resume highlighted excellent experience in **General Ledger (GL) Management**, which is a key requirement for our team.
-
-We would like to invite you to a 30-minute screening interview next week to discuss your qualifications further. Please let me know your availability for a call on Tuesday or Wednesday afternoon.
+Thank you for applying. Based on your experience, we'd like to invite you to an interview.
 
 Best regards,
-[Hiring Manager Name]`;
+Hiring Team`;
 
-    const mockOutreach = `Subject: Exploring the Staff Accountant role at Stellar Dynamics Corp.
+        const mockOutreach = `Subject: Opportunity for ${name}
 
-Hi **${name}**,
+Hi ${name},
 
-I came across your profile and was immediately impressed by your background in **Accounts Payable (AP) management** and your commitment to achieving your **CPA**.
-
-We have a key Staff Accountant role at Stellar Dynamics Corp. that aligns perfectly with your skill set, specifically your ERP exposure and GAAP knowledge.
-
-Are you open to a confidential 15-minute introductory chat next week? If so, please feel free to book time on my calendar here [Link].
+I saw your profile and was impressed by your background. We have an opening that fits your skills.
 
 Best,
-[Recruiter Name]`;
-    
-    try {
+Recruiting Team`;
+
         let responseText = toolType === 'invite' ? mockInvite : mockOutreach;
-        if (tone === 'casual') { responseText = responseText.replace('Best regards,', 'Cheers,'); } 
-        else if (tone === 'direct') { responseText = responseText.replace('Hi', 'Hello').replace('Thank you for applying', 'We reviewed your application and'); }
         if (toolType === 'invite') setInviteDraft(responseText);
         if (toolType === 'outreach') setOutreachDraft(responseText);
-        
+        setToolLoading(false);
+        return;
+    }
+
+    // --- REAL API LOGIC ---
+    try {
+        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+            if (toolType === 'invite') setInviteDraft(text);
+            if (toolType === 'outreach') setOutreachDraft(text);
+        } else {
+            setError("AI returned an empty response for drafting.");
+        }
     } catch (err) { setError(`Failed to generate content.`); } finally { setToolLoading(false); }
-  }, [resume, selectedTone, setInviteDraft, setOutreachDraft, setError, setActiveTool, setToolLoading]);
+  }, [resume, apiKey]); // Added apiKey to dependency array
 
 
   const handleDraft = useCallback((type) => {
       if (!resume.trim() || !jobDescription.trim()) { setError("Please enter both a JD and Resume."); return; }
       const name = extractCandidateName(resume);
       setCandidateName(name);
-      generateContent(type, "");
-  }, [resume, jobDescription, generateContent, setCandidateName, setError]);
+      
+      const basePrompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate name: ${name}.`;
+      let prompt = "";
+      if (type === 'invite') {
+          prompt = `${basePrompt} Write a professional email inviting the candidate to a 30-minute screening interview. Ensure it includes a Subject Line and Body. Use Markdown for **bolding** key terms. Mention a specific skill or experience from their resume that relates to the JD requirements. The candidate applied to this job posting.`;
+      } else if (type === 'outreach') {
+           prompt = `${basePrompt} Write a professional, engaging outreach email to a passive candidate. The goal is to start a conversation about an open role based on their resume. Use Markdown for **bolding** key skills or points of interest. Keep it concise and persuasive.`;
+      }
+      prompt += `\nJD: ${jobDescription}\nResume: ${resume}`;
+
+      generateContent(type, prompt);
+  }, [resume, jobDescription, generateContent, selectedTone]);
 
   // --- Core Analysis Logic (ASYNCHRONOUS part, only called outside Canvas) ---
   const handleAnalyzeAsync = async () => {
-    const extractedName = extractCandidateName(jobDescription);
+    const extractedName = extractCandidateName(resume);
     const currentJdHash = hashJobDescription(jobDescription);
 
     try {
       // REAL FETCH LOGIC (Only runs in live Vercel environment)
-      const proxyUrl = `${window.location.protocol}//${window.location.host}/api/analyze`;
-      let response = await fetch(proxyUrl, { 
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ jobDescription, resume }) 
+        body: JSON.stringify({ 
+            contents: [{ parts: [{ text: `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}` }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        })
       });
       
       if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown Proxy Error' }));
-          throw new Error(`Proxy Error [Status: ${response.status}]: ${errorData.error || response.statusText || 'Check server logs.'}`);
+          throw new Error(`API Error: ${response.status}`);
       }
       
-      const result = await response.json();
-      const parsedResult = result.analysis;
-      if(parsedResult) {
+      const data = await response.json();
+      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if(textResult) {
+        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
+        const parsedResult = JSON.parse(cleanJson);
+        
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
@@ -538,7 +563,7 @@ Best,
       }
     } catch (err) { 
         console.error(err); 
-        setError(err.message || "Failed to analyze. Check network connection or proxy configuration."); 
+        setError(err.message || "Failed to analyze. Please check your API key."); 
     } finally { 
         setLoading(false); 
     }
