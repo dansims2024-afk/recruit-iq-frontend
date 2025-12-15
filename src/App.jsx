@@ -2,14 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// Set to TRUE to test in the Canvas/Demo window without crashing.
-// Set to FALSE when deploying to a live server to use the Real API.
+// KEEP THIS set to TRUE to test in the Canvas/Demo window without crashing.
+// Set to FALSE only when deploying to a live server to use the Real API.
 const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
 // *** PASTE YOUR API KEY HERE FOR LIVE DEPLOYMENT ***
-const apiKey = ""; 
+const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
@@ -190,7 +190,7 @@ const updateLeaderboardUtility = (newEntry) => {
 const Logo = () => (
   <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
     <defs>
-      <linearGradient id="swirlBrand" x1="0%" y1="100%" x2="100%" y2="0%">
+      <linearGradient id="swirlBrand" x1="0%" y1="100%" y2="0%">
         <stop offset="0%" stopColor={BRAND.cyan} />
         <stop offset="100%" stopColor={BRAND.primaryBlue} />
       </linearGradient>
@@ -201,7 +201,7 @@ const Logo = () => (
     </defs>
     <path d="M 45 15 C 25 15, 10 35, 15 60 C 16 68, 25 75, 35 75 C 40 75, 35 70, 30 65 C 20 50, 25 30, 45 25 C 50 23, 55 20, 45 15 Z" fill="url(#swirlBrand)" />
     <path d="M 12 55 C 10 45, 12 35, 18 25 L 20 28 C 15 35, 4 45, 16 52 Z" fill={BRAND.cyan} />
-    <path d="M 30 78 C 20 75, 15 65, 15 55 L 12 58 C 15 70, 25 80, 35 80 Z" fill={BRAND.primaryBlue} />
+    <path d="M 30 78 C 20 75, 15 65, 15 55 L 12 58 C 15 70, 25 80, 35 80 Z" fill="url(#swirlDeep)" />
     <path d="M 55 85 C 75 85, 90 65, 85 40 C 84 32, 75 25, 65 25 C 60 25, 65 30, 70 35 C 80 50, 75 70, 55 75 C 50 77, 45 80, 55 85 Z" fill="url(#swirlDeep)" />
     <path d="M 88 45 C 90 55, 88 65, 82 75 L 80 72 C 85 65, 86 55, 84 48 Z" fill={BRAND.orchid} />
     <path d="M 70 22 C 80 25, 85 35, 85 45 L 88 42 C 85 30, 75 20, 65 20 Z" fill={BRAND.deepPurple} />
@@ -243,7 +243,6 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
 const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboardData }) => {
     const currentList = leaderboardData[jdHash] || [];
     const sortedList = currentList.sort((a, b) => b.score - a.score).slice(0, 10);
-    if (sortedList.length === 0) return (<div className="text-center py-8 bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6"><Zap size={24} className="text-[#00c9ff]" mx-auto mb-2 /><p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p></div>);
     const handleDeleteLeaderboard = () => { if (window.confirm("Are you sure you want to clear the entire leaderboard for this Job Description? This action cannot be undone.")) { onClear(jdHash); } };
     
     return (
@@ -252,7 +251,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
-            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce]/20">
+            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce}/20">
                 {sortedList.map((candidate, index) => {
                     const isCurrent = candidate.name === currentCandidateName;
                     let rankColor = 'bg-[#b2acce]';
@@ -284,7 +283,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
           {['professional', 'casual', 'direct'].map(tone => (
-              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce]/20'}`}>{tone}</button>
+              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce}/20'}`}>{tone}</button>
           ))}
       </div>
       {toolLoading && ( <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-[#2B81B9]" /> Generating Draft...</div> )}
@@ -461,24 +460,30 @@ export default function App() {
     if (ENABLE_DEMO_MODE || (window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:'))) {
         await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
         const name = extractCandidateName(resume) || "Candidate";
-        const mockInvite = `Subject: Interview Invitation: ${name}
+        const mockInvite = `Subject: Interview Invitation: Staff Accountant at Stellar Dynamics Corp.
 
-Hi ${name},
+Hi **${name}**,
 
-Thank you for applying. Based on your experience, we'd like to invite you to an interview.
+Thank time applying for the Staff Accountant position at Stellar Dynamics Corp. Your resume highlighted excellent experience in **General Ledger (GL) Management**, which is a key requirement for our team.
+
+We would like to invite you to a 30-minute screening interview next week to discuss your qualifications further. Please let me know your availability for a call on Tuesday or Wednesday afternoon.
 
 Best regards,
-Hiring Team`;
+[Hiring Manager Name]`;
 
-        const mockOutreach = `Subject: Opportunity for ${name}
+        const mockOutreach = `Subject: Exploring the Staff Accountant role at Stellar Dynamics Corp.
 
-Hi ${name},
+Hi **${name}**,
 
-I saw your profile and was impressed by your background. We have an opening that fits your skills.
+I came across your profile and was immediately impressed by your background in **Accounts Payable (AP) management** and your commitment to achieving your **CPA**.
+
+We have a key Staff Accountant role at Stellar Dynamics Corp. that aligns perfectly with your skill set, specifically your ERP exposure and GAAP knowledge.
+
+Are you open to a confidential 15-minute introductory chat next week? If so, please feel free to book time on my calendar here [Link].
 
 Best,
-Recruiting Team`;
-
+[Recruiter Name]`;
+    
         let responseText = toolType === 'invite' ? mockInvite : mockOutreach;
         if (toolType === 'invite') setInviteDraft(responseText);
         if (toolType === 'outreach') setOutreachDraft(responseText);
@@ -502,7 +507,7 @@ Recruiting Team`;
             setError("AI returned an empty response for drafting.");
         }
     } catch (err) { setError(`Failed to generate content.`); } finally { setToolLoading(false); }
-  }, [resume, apiKey]); // Added apiKey to dependency array
+  }, [resume, apiKey]);
 
 
   const handleDraft = useCallback((type) => {
@@ -577,7 +582,6 @@ Recruiting Team`;
     setLoading(true); setError(null); setAnalysis(null);
     const extractedName = extractCandidateName(resume);
     
-    // Determine if we are running in the embedded Canvas environment
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
     // **FINAL FIX** Check immediately and handle mock synchronously to prevent fetch initialization crash
@@ -585,7 +589,6 @@ Recruiting Team`;
          try {
              // --- SYNCHRONOUS MOCK EXECUTION (AVOIDS ASYNC CRASH) ---
              console.log("Canvas Network Block detected, engaging mock mode.");
-             // Removed setError for mock mode to reduce visual clutter for user
 
              const mockScore = 85;
              const mockParsedResult = {
@@ -656,7 +659,7 @@ Recruiting Team`;
                 ))}
               </div>
               <div className="p-3 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center print:hidden">
-                  <label className={`flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border-2 border-transparent text-[#2B81B9] text-xs font-semibold hover:border-[#00c9ff] transition-all shadow-md hover:shadow-lg ${!libsLoaded ? 'opacity-50 cursor-wait' : ''}`} style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderImage: 'linear-gradient(to right, #00c9ff, #2B81B9) 1' }}>
+                  <label className={`flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border-2 border-transparent text-[#2B81B9] text-xs font-semibold hover:border-[#00c9ff] transition-all shadow-md hover:shadow-lg`} style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderImage: 'linear-gradient(to right, #00c9ff, #2B81B9) 1' }}>
                       <Download size={14} className="text-[#00c9ff]" style={{ color: '#00c9ff' }} />
                       <span style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Upload File (.pdf, .docx, .txt)</span>
                       <input type="file" className="hidden" accept=".txt, .md, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => handleFileUpload(e, activeTab === 'jd' ? 'jd' : 'resume')} disabled={!libsLoaded} />
