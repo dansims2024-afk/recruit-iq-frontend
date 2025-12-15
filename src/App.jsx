@@ -250,8 +250,8 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
     const handleDeleteLeaderboard = () => { if (window.confirm("Are you sure you want to clear the entire leaderboard for this Job Description? This action cannot be undone.")) { onClear(jdHash); } };
     
     return (
-        <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
+        <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 mb-6">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce}/20">
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
@@ -321,7 +321,7 @@ const AppSummary = () => (
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis via the secure proxy.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Percent size={16} className="text-[#00c9ff] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 3: Review Results</span><p className="text-slate-500 mt-0.5">Instantly receive a Match Score, Strengths, Gaps, and tailored Interview Questions.</p></div>
             </div>
