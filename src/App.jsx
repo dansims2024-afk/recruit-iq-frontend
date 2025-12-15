@@ -4,7 +4,7 @@ import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, 
 // --- MANUAL CONFIGURATION ---
 // KEEP THIS set to TRUE to test in the Canvas/Demo window without crashing.
 // Set to FALSE only when deploying to a live server to use the Real API.
-const ENABLE_DEMO_MODE = false; 
+const ENABLE_DEMO_MODE = true; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
