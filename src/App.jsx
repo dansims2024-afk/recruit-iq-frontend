@@ -273,7 +273,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
 };
 
 const InterviewQuestionsSection = ({ questions }) => (
-  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
+  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
     <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2"><HelpCircle size={14} className="text-[#00c9ff]" />Suggested Interview Questions</h2>
     <div className="grid grid-cols-1 gap-3">
       {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce]/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
@@ -287,7 +287,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
           {['professional', 'casual', 'direct'].map(tone => (
-              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce]/20'}`}>{tone}</button>
+              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce}/20'}`}>{tone}</button>
           ))}
       </div>
       {toolLoading && ( <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-[#2B81B9]" /> Generating Draft...</div> )}
@@ -301,7 +301,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft (Cold Outreach)' : 'Custom Interview Email (Applied to Job Posting)'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
-              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
+              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce}/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
               <div className="mt-3 flex justify-end"><button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button></div>
           </div>
       )}
@@ -309,7 +309,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
 );
 
 const AppSummary = () => (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
         <p className="text-sm text-slate-600 mb-4">Recruit-IQ uses the Gemini API to instantly screen candidate resumes against your specific job requirements, providing a quantified **Match Score** and actionable insights.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
@@ -348,18 +348,12 @@ export default function App() {
   const [selectedTone, setSelectedTone] = useState('professional'); 
   const [libsLoaded, setLibsLoaded] = useState(false);
   
-  // Since we removed freemium, these are now initialized directly
-  const [screensUsed, setScreensUsed] = useState(0); 
-  const [showPaywallModal, setShowPaywallModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authInitialSignUp, setAuthInitialSignUp] = useState(false);
-  const [currentUserId] = useState('anonymous_unlimited'); // Retained for internal tracking
+  // Cleaned up unused freemium state variables
+  const [currentUserId] = useState('anonymous_unlimited'); 
 
   // --- EFFECT AND SESSION LOGIC ---
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
-  // Removed handleLogin, handleLogout
-  
+
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
   const [leaderboardData, setLeaderboardData] = useState(getLeaderboard()); 
   const handleClearLeaderboard = useCallback((jdHashToClear) => {
@@ -393,7 +387,6 @@ export default function App() {
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null); setError(null); setCandidateName('');
-    // No more freemium state to reset here
   }, [setJobDescription, setResume, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool, setError, setCandidateName]);
 
   const handleLoadExample = useCallback(() => {
@@ -610,9 +603,6 @@ Best,
       
       {copyFeedback && <div className="fixed top-4 right-1/2 translate-x-1/2 mt-2 z-50 px-4 py-2 rounded-xl text-white font-medium shadow-lg bg-emerald-500">{copyFeedback}</div>}
       
-      {/* Removed AuthModal and PaywallModal logic */}
-      
-
       <main className="max-w-6xl mx-auto p-4 md:p-6">
         <AppSummary />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
