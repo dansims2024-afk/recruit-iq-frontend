@@ -525,4 +525,162 @@ Best,
     // --- MOCK MODE CHECK (Executed immediately to prevent TypeError: Failed to fetch) ---
     if (isCanvasEnvironment) {
          console.error("Canvas Network Block detected, engaging mock mode.");
-         setError(`[MOCK MODE] Proxy Failed. Displaying mock data. (Live site requires valid API key
+         setError(`[MOCK MODE] Proxy Failed. Displaying mock data. (Live site requires valid API key/Proxy)`);
+
+         // MOCK LOGIC START (Used in Canvas)
+         const mockScore = 85;
+         const mockParsedResult = {
+                matchScore: mockScore,
+                fitSummary: "MOCK DATA: Network failure detected, this mock is used for UI testing. Live site requires valid API key.",
+                strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
+                gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
+                interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
+         };
+         
+         const newEntry = { jdHash: currentJdHash, name: extractedName, score: mockScore, summary: mockParsedResult.fitSummary };
+         if (extractedName !== 'Unnamed Candidate' && mockScore > 0) { updateLeaderboardUtility(newEntry); }
+         setAnalysis({ matchScore: mockScore, fitSummary: mockParsedResult.fitSummary, strengths: mockParsedResult.strengths, gaps: mockParsedResult.gaps, interviewQuestions: mockParsedResult.interviewQuestions, });
+         setActiveTab('resume'); 
+         setLoading(false); 
+         return; 
+         // MOCK LOGIC END
+    }
+
+    // --- REAL FETCH LOGIC (Only runs in live Vercel environment) ---
+    try {
+      // Re-introducing absolute URL construction which should resolve the parse error in Vercel/live mode
+      const proxyUrl = `${window.location.protocol}//${window.location.host}/api/analyze`;
+      let response = await fetch(proxyUrl, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ jobDescription, resume }) 
+      });
+      
+      if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown Proxy Error' }));
+          throw new Error(`Proxy Error [Status: ${response.status}]: ${errorData.error || response.statusText || 'Check server logs.'}`);
+      }
+      
+      // REAL LOGIC START (Used in Vercel Live Deployment)
+      const result = await response.json();
+      const parsedResult = result.analysis;
+      if(parsedResult) {
+        let score = 0;
+        if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
+        else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
+        // Removed usage count updates
+        const newEntry = { jdHash: currentJdHash, name: extractedName, score: score, summary: parsedResult.fitSummary };
+        if (extractedName !== 'Unnamed Candidate' && score > 0) { updateLeaderboardUtility(newEntry); }
+        setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
+        setActiveTab('resume');
+      } else throw new Error("No analysis returned from AI.");
+    } catch (err) { 
+        console.error(err); 
+        setError(err.message || "Failed to analyze. Check network connection or proxy configuration."); 
+    } finally { 
+        setLoading(false); 
+    }
+  };
+  
+  
+  const currentDraftContent = useMemo(() => {
+    if (activeTool === 'invite') return inviteDraft;
+    if (activeTool === 'outreach') return outreachDraft;
+    return '';
+  }, [activeTool, inviteDraft, outreachDraft]);
+
+  return (
+    <div className="min-h-screen bg-gray-100 font-sans text-slate-900">
+      <style>{`@media print { body > #root > div > main { max-width: none !important; margin: 0 !important; padding: 0 !important; } .print-area { width: 8.5in; height: 11in; padding: 0.5in; } .print\\:hidden { display: none !important; } } .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10 print:hidden">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2"><Logo /><h1 className="font-bold text-xl tracking-tight text-slate-800">Core Creativity<span className="text-[#2B81B9]">AI</span></h1></div>
+          <div className="flex items-center gap-4">
+              <div className="text-sm font-medium bg-[#52438E] text-white px-3 py-1 rounded-full shadow-sm hidden sm:block">Recruit-IQ / Candidate Match Analyzer</div>
+          </div>
+        </div>
+      </header>
+      
+      {copyFeedback && <div className="fixed top-4 right-1/2 translate-x-1/2 mt-2 z-50 px-4 py-2 rounded-xl text-white font-medium shadow-lg bg-emerald-500">{copyFeedback}</div>}
+      
+      <main className="max-w-6xl mx-auto p-4 md:p-6">
+        <AppSummary />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="flex flex-col h-[calc(100vh-270px)] min-h-[500px]">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+              <div className="flex border-b border-slate-200">
+                {['jd', 'resume'].map(tab => (
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === tab ? 'text-[#52438E] bg-[#52438E]/5' : 'text-slate-500 hover:bg-slate-50'}`}>
+                    {tab === 'jd' ? <Briefcase size={16} /> : <FileText size={16} />} {tab === 'jd' ? 'Upload or Paste Job Description' : 'Upload or Paste Candidate Resume'}
+                    {((tab === 'jd' && jobDescription) || (tab === 'resume' && resume)) && <Check size={14} className="text-emerald-500" />}
+                    {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#52438E]" />}
+                  </button>
+                ))}
+              </div>
+              <div className="p-3 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center print:hidden">
+                  <label className={`flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border-2 border-transparent text-[#2B81B9] text-xs font-semibold hover:border-[#00c9ff] transition-all shadow-md hover:shadow-lg ${!libsLoaded ? 'opacity-50 cursor-wait' : ''}`} style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderImage: 'linear-gradient(to right, #00c9ff, #2B81B9) 1' }}>
+                      <Download size={14} className="text-[#00c9ff]" style={{ color: '#00c9ff' }} />
+                      <span style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Upload File (.pdf, .docx, .txt)</span>
+                      <input type="file" className="hidden" accept=".txt, .md, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => handleFileUpload(e, activeTab === 'jd' ? 'jd' : 'resume')} disabled={!libsLoaded} />
+                  </label>
+                  <div className="flex gap-2 items-center">
+                      <button onClick={handleLoadExample} className="text-xs font-medium text-[#2B81B9] hover:text-[#00c9ff] px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">Click for Example</button>
+                      {(jobDescription || resume) && <button onClick={clearAll} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-1.5 hover:bg-slate-100 rounded-md transition-colors">Clear All</button>}
+                  </div>
+              </div>
+              {candidateName && candidateName !== 'Unnamed Candidate' && activeTab === 'resume' && (
+                  <div className="p-3 border-b border-slate-100 bg-white">
+                      <div className="text-xs font-medium text-slate-600 mb-1">Candidate Name:</div>
+                      <div className="text-sm font-bold text-[#52438E]">{candidateName}</div>
+                  </div>
+              )}
+              <div className="flex-1 relative">
+                <textarea className="w-full h-full p-5 resize-none outline-none text-slate-600 text-sm leading-relaxed placeholder:text-slate-300 bg-white" placeholder={activeTab === 'jd' ? "Paste the job description here..." : "Paste the candidate's resume here..."} value={activeTab === 'jd' ? jobDescription : resume} onChange={(e) => { activeTab === 'jd' ? setJobDescription(e.target.value) : setResume(e.target.value); }} autoFocus />
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-white print:hidden">
+                <button onClick={handleAnalyze} disabled={loading || !jobDescription || !resume} className={`w-full py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${loading || !jobDescription || !resume ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#00c9ff] to-[#2B81B9] text-white hover:opacity-90 shadow-lg shadow-[#00c9ff]/40'}`}>
+                  {loading ? (<><Loader2 className="w-5 h-5 animate-spin" />Screening Candidate...</>) : (<><Sparkles size={18} />Screen Candidate</>)}
+                </button>
+                {error && <div className="mt-3 text-red-500 text-sm flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</div>}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col h-[calc(100vh-270px)] min-h-[500px]">
+              {!analysis ? (
+                  <div className="h-full bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+                      <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Search size={32} className="text-slate-300" /></div>
+                      <h3 className="text-lg font-medium text-slate-600 mb-2">Ready for Screening</h3>
+                      <p className="max-w-xs text-sm">Paste or upload a Job Description and Candidate Resume on the left to begin the AI screening process.</p>
+                  </div>
+              ) : (
+                  <div className="h-full flex flex-col overflow-hidden">
+                      {/* NEW HEADER FOR OUTPUT */}
+                      <div className="bg-white rounded-t-2xl px-6 py-3 border-b border-slate-200">
+                          <h2 className="text-lg font-bold text-[#52438E] flex items-center gap-2">
+                              Results and Additional Tools
+                          </h2>
+                      </div>
+                      <div className="flex-1 overflow-y-auto custom-scrollbar pt-3 px-2">
+                          <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(generateSummaryText())} />
+                          <CommunicationTools 
+                              activeTool={activeTool}
+                              setActiveTool={setActiveTool}
+                              draftContent={currentDraftContent}
+                              handleDraft={handleDraft} 
+                              handleCopy={handleCopy} 
+                              setDrafts={setDrafts}
+                              selectedTone={selectedTone}
+                              setSelectedTone={setSelectedTone}
+                              toolLoading={toolLoading}
+                          />
+                          <Leaderboard jdHash={currentJdHash} currentCandidateName={candidateName} score={analysis.matchScore} onClear={handleClearLeaderboard} leaderboardData={leaderboardData} />
+                          {analysis.interviewQuestions && analysis.interviewQuestions.length > 0 && <InterviewQuestionsSection questions={analysis.interviewQuestions} />}
+                      </div>
+                  </div>
+              )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
