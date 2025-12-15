@@ -68,7 +68,7 @@ export default async function analyzeCandidate(req, res) {
           Candidate Resume: ${resume}
         `;
         
-        // --- 3. Call External AI ---
+        // --- 3. Call the Secure AI ---
         const jsonResultText = await callGeminiAPI(prompt);
         
         // --- 4. Process and Return ---
@@ -77,6 +77,7 @@ export default async function analyzeCandidate(req, res) {
         
         res.status(200).json({ 
             analysis: parsedResult,
+            // We are not tracking usage now, but this placeholder is here for future monetization
             newUsageCount: 0 
         });
 
