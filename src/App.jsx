@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building } from 'lucide-react';
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
-// NOTE: Using localStorage for leaderboard persistence only.
+// --- MANUAL CONFIGURATION ---
+// KEEP THIS set to TRUE to test in the Canvas/Demo window without crashing.
+// Set to FALSE only when deploying to a live server with a valid API Key.
+const ENABLE_DEMO_MODE = true; 
+
 const localStorageKey = 'hm_copilot_leaderboard_data';
-
-// --- CONFIGURATION ---
 const apiKey = ""; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -17,7 +19,7 @@ const BRAND = {
     cyan: '#00c9ff',
 };
 
-// --- Example Data (Moved Outside App Component) ---
+// --- Example Data ---
 const FULL_EXAMPLE_JD = `Company: Stellar Dynamics Corp.
 Location: Phoenix, AZ
 Job Type: Full-Time, Exempt
@@ -102,34 +104,30 @@ Awards & Recognition
 ASU Dean's List (2022, 2023)
 Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
 
-// --- Utility Functions (Outside App Component for clean hoisting) ---
+// --- Utility Functions (HOISTED TO TOP) ---
+
 const hashJobDescription = (jd) => {
     let hash = 0;
     if (!jd || jd.length === 0) return "default";
     for (let i = 0; i < jd.length; i++) {
         const char = jd.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
-        hash |= 0; // Convert to 32bit integer
+        hash |= 0; 
     }
     return Math.abs(hash).toString(36);
 };
 
 const getLeaderboard = () => {
     try {
-        const data = localStorage.getItem(localStorageKey);
+        const data = localStorage.getItem('hm_copilot_leaderboard_data');
         return data ? JSON.parse(data) : {};
-    } catch (e) {
-        console.error("Error loading leaderboard:", e);
-        return {};
-    }
+    } catch (e) { return {}; }
 };
 
 const saveLeaderboard = (data) => {
     try {
-        localStorage.setItem(localStorageKey, JSON.stringify(data));
-    } catch (e) {
-        console.error("Error saving leaderboard:", e);
-    }
+        localStorage.setItem('hm_copilot_leaderboard_data', JSON.stringify(data));
+    } catch (e) { }
 };
 
 const extractCandidateName = (resumeContent) => {
@@ -147,8 +145,8 @@ const extractCandidateName = (resumeContent) => {
     return firstLine.split('|')[0].trim() || 'Unnamed Candidate';
 };
 
+// GLOBAL HELPER: handleCopy needs to be defined before components use it
 let setCopyFeedbackGlobal = null; 
-
 const handleCopy = (text) => {
     const textArea = document.createElement('textarea');
     textArea.value = text;
@@ -164,10 +162,6 @@ const handleCopy = (text) => {
             setTimeout(() => setCopyFeedbackGlobal(null), 2000);
         }
     } catch (err) {
-        if (setCopyFeedbackGlobal) {
-            setCopyFeedbackGlobal("Copy failed!");
-            setTimeout(() => setCopyFeedbackGlobal(null), 2000);
-        }
         console.error('Fallback copy failed:', err);
     }
     document.body.removeChild(textArea);
@@ -189,7 +183,8 @@ const updateLeaderboardUtility = (newEntry) => {
     saveLeaderboard(updatedLeaderboard);
 };
 
-// --- Sub-Components ---
+// --- Sub-Components (DEFINED AFTER HELPERS) ---
+
 const Logo = () => (
   <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
     <defs>
@@ -223,7 +218,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
     <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
       <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2"><Percent size={14} className="text-[#00c9ff]" />Candidate Scorecard</div>
-        <button onClick={onCopySummary} disabled={!analysis.matchScore} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 disabled:opacity-50 transition-colors print:hidden"><Copy size={12} /> Copy Summary to Clipboard</button>
+        <button onClick={onCopySummary} disabled={!analysis.matchScore} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 disabled:opacity-50 transition-colors print:hidden"><Copy size={12} /> Copy Summary</button>
       </h2>
       <div className="flex items-center gap-6 mb-4">
         <div className={`relative w-24 h-24 flex items-center justify-center rounded-full border-4 text-2xl font-bold shadow-lg bg-gradient-to-br ${colorClass} text-white`}>{score}%</div>
@@ -246,22 +241,22 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
 const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboardData }) => {
     const currentList = leaderboardData[jdHash] || [];
     const sortedList = currentList.sort((a, b) => b.score - a.score).slice(0, 10);
-    if (sortedList.length === 0) return (<div className="text-center py-8 bg-white rounded-2xl shadow-md border border-[#b2acce}/50 mb-6"><Zap size={24} className="text-[#00c9ff]" mx-auto mb-2 /><p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p></div>);
+    if (sortedList.length === 0) return (<div className="text-center py-8 bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6"><Zap size={24} className="text-[#00c9ff] mx-auto mb-2" /><p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p></div>);
     const handleDeleteLeaderboard = () => { if (window.confirm("Are you sure you want to clear the entire leaderboard for this Job Description? This action cannot be undone.")) { onClear(jdHash); } };
     
     return (
-        <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce}/20">
+        <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
-            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce}/20">
+            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce]/20">
                 {sortedList.map((candidate, index) => {
                     const isCurrent = candidate.name === currentCandidateName;
                     let rankColor = 'bg-[#b2acce]';
                     if (index === 0) rankColor = 'bg-[#00c9ff]'; if (index === 1) rankColor = 'bg-[#2B81B9]'; if (index === 2) rankColor = 'bg-[#52438E]';
                     return (
-                        <div key={candidate.name} className={`p-4 flex items-center justify-between transition-all ${isCurrent ? 'bg-[#00c9ff]/10 border-l-4 border-[#00c9ff]' : 'hover:bg-slate-50'}`}>
+                        <div key={candidate.name + index} className={`p-4 flex items-center justify-between transition-all ${isCurrent ? 'bg-[#00c9ff]/10 border-l-4 border-[#00c9ff]' : 'hover:bg-slate-50'}`}>
                             <div className="flex items-center gap-3"><div className={`w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center ${rankColor}`}>{index + 1}</div><div><div className="font-semibold text-slate-800">{candidate.name} {isCurrent && <span className="text-[10px] ml-1 bg-[#2B81B9] text-white px-1 py-0.5 rounded-full">CURRENT</span>}</div></div></div>
                             <div className="flex items-center gap-2"><div className={`font-bold text-lg ${candidate.score >= 80 ? 'text-[#00c9ff]' : candidate.score >= 50 ? 'text-[#8C50A1]' : 'text-red-600'}`}>{candidate.score}%</div><div className="w-16 h-1 bg-[#b2acce}/30 rounded-full overflow-hidden"><div className={`h-full ${candidate.score >= 80 ? 'bg-[#00c9ff]' : candidate.score >= 50 ? 'bg-[#8C50A1]' : 'bg-red-500'}`} style={{ width: `${candidate.score}%` }}/></div></div>
                         </div>
@@ -273,10 +268,10 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
 };
 
 const InterviewQuestionsSection = ({ questions }) => (
-  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
     <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2"><HelpCircle size={14} className="text-[#00c9ff]" />Suggested Interview Questions</h2>
     <div className="grid grid-cols-1 gap-3">
-      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce}/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
+      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce]/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
     </div>
   </div>
 );
@@ -287,7 +282,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
           {['professional', 'casual', 'direct'].map(tone => (
-              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce}/20'}`}>{tone}</button>
+              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce]/20'}`}>{tone}</button>
           ))}
       </div>
       {toolLoading && ( <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-[#2B81B9]" /> Generating Draft...</div> )}
@@ -301,7 +296,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft (Cold Outreach)' : 'Custom Interview Email (Applied to Job Posting)'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
-              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce}/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
+              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
               <div className="mt-3 flex justify-end"><button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button></div>
           </div>
       )}
@@ -309,19 +304,19 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
 );
 
 const AppSummary = () => (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
         <p className="text-sm text-slate-600 mb-4">Recruit-IQ uses the Gemini API to instantly screen candidate resumes against your specific job requirements, providing a quantified **Match Score** and actionable insights.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <FileText size={16} className="text-[#2B81B9] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 1: Input Job and Resume</span><p className="text-slate-500 mt-0.5">Paste or upload the Job Description (JD) and the Candidate's Resume on the left.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis via the secure proxy.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <Percent size={16} className="text-[#00c9ff] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 3: Review Results</span><p className="text-slate-500 mt-0.5">Instantly receive a Match Score, Strengths, Gaps, and tailored Interview Questions.</p></div>
             </div>
@@ -348,26 +343,21 @@ export default function App() {
   const [selectedTone, setSelectedTone] = useState('professional'); 
   const [libsLoaded, setLibsLoaded] = useState(false);
   
-  // Cleaned up unused freemium state variables
-  const [currentUserId] = useState('anonymous_unlimited'); 
+  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard());
 
   // --- EFFECT AND SESSION LOGIC ---
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
 
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
-  const [leaderboardData, setLeaderboardData] = useState({}); // Initializing directly to {}
+  
   const handleClearLeaderboard = useCallback((jdHashToClear) => {
       setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
   }, []);
 
-  // Re-added the useEffect to load data after load (post-synchronous initialization)
   useEffect(() => {
-    // Only attempt to load leaderboard data *after* the initial sync render
-    const initialData = getLeaderboard();
-    if (initialData && Object.keys(initialData).length > 0) {
-        setLeaderboardData(initialData);
-    }
-  }, []);
+      const allData = getLeaderboard();
+      if (JSON.stringify(allData) !== JSON.stringify(leaderboardData)) { setLeaderboardData(allData); }
+  }, [analysis, currentJdHash]);
 
   useEffect(() => {
     const loadScript = (src) => {
@@ -385,13 +375,12 @@ export default function App() {
     }).catch(err => console.error("Failed to load file parsing libs", err));
   }, []);
   
-  // --- CORE CALLBACKS (Must be defined before usage in JSX/other callbacks) ---
-  
+  // --- CORE CALLBACKS ---
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null); setError(null); setCandidateName('');
-  }, [setJobDescription, setResume, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool, setError, setCandidateName]);
+  }, []);
 
   const handleLoadExample = useCallback(() => {
     setJobDescription(FULL_EXAMPLE_JD);
@@ -400,7 +389,7 @@ export default function App() {
     setError(null); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null);
-  }, [setJobDescription, setResume, setCandidateName, setError, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool]); 
+  }, []); 
 
   // --- File/Content Utility Functions ---
   const readPdf = async (arrayBuffer) => { 
@@ -431,7 +420,7 @@ export default function App() {
       if (type === 'jd') { setJobDescription(cleanedText); setActiveTab('resume'); } 
       else { setResume(cleanedText); setCandidateName(extractCandidateName(cleanedText)); }
       setLoading(false);
-  }, [setJobDescription, setActiveTab, setResume, setCandidateName, setError, setLoading]);
+  }, []);
 
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
@@ -458,11 +447,10 @@ export default function App() {
     e.target.value = null;
   }, [libsLoaded, processText]);
   
-  // --- Communication Tool Logic ---
   const setDrafts = useCallback((type, value) => {
       if (type === 'invite') setInviteDraft(value);
       if (type === 'outreach') setOutreachDraft(value);
-  }, [setInviteDraft, setOutreachDraft]);
+  }, []);
   
   const generateContent = useCallback(async (toolType, prompt) => {
     setToolLoading(true); setError(null); setActiveTool(toolType);
@@ -471,7 +459,7 @@ export default function App() {
     const tone = selectedTone;
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    // --- MOCK RESPONSE ---
+    // Hardcoded mock response for demo
     const mockInvite = `Subject: Interview Invitation: Staff Accountant at Stellar Dynamics Corp.
 
 Hi **${name}**,
@@ -495,7 +483,6 @@ Are you open to a confidential 15-minute introductory chat next week? If so, ple
 
 Best,
 [Recruiter Name]`;
-    // --- END MOCK RESPONSE ---
     
     try {
         let responseText = toolType === 'invite' ? mockInvite : mockOutreach;
@@ -515,44 +502,13 @@ Best,
       generateContent(type, "");
   }, [resume, jobDescription, generateContent, setCandidateName, setError]);
 
-  // --- Core Analysis Logic ---
-  const handleAnalyze = async () => {
-    if (!jobDescription.trim() || !resume.trim()) { setError("Please fill in Job Description and Resume."); setActiveTab('jd'); return; }
-    
-    const extractedName = extractCandidateName(resume);
-    setCandidateName(extractedName);
-    setLoading(true); setError(null); setAnalysis(null); 
-    
-    // Determine if we are running in the embedded Canvas environment
-    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+  // --- Core Analysis Logic (ASYNCHRONOUS part, only called outside Canvas) ---
+  const handleAnalyzeAsync = async () => {
+    const extractedName = extractCandidateName(jobDescription);
+    const currentJdHash = hashJobDescription(jobDescription);
 
-    // --- MOCK MODE CHECK (Executed immediately to prevent TypeError: Failed to fetch) ---
-    if (isCanvasEnvironment) {
-         console.error("Canvas Network Block detected, engaging mock mode.");
-         setError(`[MOCK MODE] Proxy Failed. Displaying mock data. (Live site requires valid API key/Proxy)`);
-
-         // MOCK LOGIC START (Used in Canvas)
-         const mockScore = 85;
-         const mockParsedResult = {
-                matchScore: mockScore,
-                fitSummary: "MOCK DATA: Network failure detected, this mock is used for UI testing. Live site requires valid API key.",
-                strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
-                gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
-                interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
-         };
-         
-         const newEntry = { jdHash: currentJdHash, name: extractedName, score: mockScore, summary: mockParsedResult.fitSummary };
-         if (extractedName !== 'Unnamed Candidate' && mockScore > 0) { updateLeaderboardUtility(newEntry); }
-         setAnalysis({ matchScore: mockScore, fitSummary: mockParsedResult.fitSummary, strengths: mockParsedResult.strengths, gaps: mockParsedResult.gaps, interviewQuestions: mockParsedResult.interviewQuestions, });
-         setActiveTab('resume'); 
-         setLoading(false); 
-         return; 
-         // MOCK LOGIC END
-    }
-
-    // --- REAL FETCH LOGIC (Only runs in live Vercel environment) ---
     try {
-      // Re-introducing absolute URL construction which should resolve the parse error in Vercel/live mode
+      // REAL FETCH LOGIC (Only runs in live Vercel environment)
       const proxyUrl = `${window.location.protocol}//${window.location.host}/api/analyze`;
       let response = await fetch(proxyUrl, { 
         method: 'POST', 
@@ -565,25 +521,78 @@ Best,
           throw new Error(`Proxy Error [Status: ${response.status}]: ${errorData.error || response.statusText || 'Check server logs.'}`);
       }
       
-      // REAL LOGIC START (Used in Vercel Live Deployment)
       const result = await response.json();
       const parsedResult = result.analysis;
       if(parsedResult) {
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
-        // Removed usage count updates
+        
         const newEntry = { jdHash: currentJdHash, name: extractedName, score: score, summary: parsedResult.fitSummary };
         if (extractedName !== 'Unnamed Candidate' && score > 0) { updateLeaderboardUtility(newEntry); }
+        
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
-      } else throw new Error("No analysis returned from AI.");
+      } else {
+         throw new Error("No analysis returned from AI.");
+      }
     } catch (err) { 
         console.error(err); 
         setError(err.message || "Failed to analyze. Check network connection or proxy configuration."); 
     } finally { 
         setLoading(false); 
     }
+  };
+
+
+  // Synchronous wrapper function attached to onClick (The solution for Canvas crash)
+  const runAnalyze = () => {
+    if (!jobDescription.trim() || !resume.trim()) { setError("Please fill in Job Description and Resume."); setActiveTab('jd'); return; }
+
+    setLoading(true); setError(null); setAnalysis(null);
+    const extractedName = extractCandidateName(resume);
+    
+    // Determine if we are running in the embedded Canvas environment
+    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+
+    // **FINAL FIX** Check immediately and handle mock synchronously to prevent fetch initialization crash
+    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+         try {
+             // --- SYNCHRONOUS MOCK EXECUTION (AVOIDS ASYNC CRASH) ---
+             console.log("Canvas Network Block detected, engaging mock mode.");
+             // Removed setError for mock mode to reduce visual clutter for user
+
+             const mockScore = 85;
+             const mockParsedResult = {
+                 matchScore: mockScore,
+                 fitSummary: "MOCK DATA: Network failure detected, this mock is used for UI testing. Live site requires valid API key.",
+                 strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
+                 gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
+                 interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
+             };
+             
+             const newEntry = { jdHash: currentJdHash, name: extractedName, score: mockScore, summary: mockParsedResult.fitSummary };
+             updateLeaderboardUtility(newEntry);
+             
+             // Simulate load delay in mock mode for better UX
+             setTimeout(() => {
+                 setAnalysis({ matchScore: mockScore, fitSummary: mockParsedResult.fitSummary, strengths: mockParsedResult.strengths, gaps: mockParsedResult.gaps, interviewQuestions: mockParsedResult.interviewQuestions, });
+                 setCandidateName(extractedName);
+                 setActiveTab('resume');
+                 setLoading(false); 
+             }, 1500); 
+             
+             return; // Crucial: synchronous exit here
+         } catch(mockError) {
+             console.error("Mock execution failed:", mockError);
+             setLoading(false);
+             setError(`Mock failed to execute: ${mockError.message}`);
+             return;
+         }
+    }
+
+    // Call the asynchronous execution directly (for external hosting)
+    handleAnalyzeAsync(); 
   };
   
   
@@ -606,7 +615,7 @@ Best,
       </header>
       
       {copyFeedback && <div className="fixed top-4 right-1/2 translate-x-1/2 mt-2 z-50 px-4 py-2 rounded-xl text-white font-medium shadow-lg bg-emerald-500">{copyFeedback}</div>}
-      
+
       <main className="max-w-6xl mx-auto p-4 md:p-6">
         <AppSummary />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -642,7 +651,7 @@ Best,
                 <textarea className="w-full h-full p-5 resize-none outline-none text-slate-600 text-sm leading-relaxed placeholder:text-slate-300 bg-white" placeholder={activeTab === 'jd' ? "Paste the job description here..." : "Paste the candidate's resume here..."} value={activeTab === 'jd' ? jobDescription : resume} onChange={(e) => { activeTab === 'jd' ? setJobDescription(e.target.value) : setResume(e.target.value); }} autoFocus />
               </div>
               <div className="p-4 border-t border-slate-100 bg-white print:hidden">
-                <button onClick={handleAnalyze} disabled={loading || !jobDescription || !resume} className={`w-full py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${loading || !jobDescription || !resume ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#00c9ff] to-[#2B81B9] text-white hover:opacity-90 shadow-lg shadow-[#00c9ff]/40'}`}>
+                <button onClick={runAnalyze} disabled={loading || !jobDescription || !resume} className={`w-full py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] ${loading || !jobDescription || !resume ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#00c9ff] to-[#2B81B9] text-white hover:opacity-90 shadow-lg shadow-[#00c9ff]/40'}`}>
                   {loading ? (<><Loader2 className="w-5 h-5 animate-spin" />Screening Candidate...</>) : (<><Sparkles size={18} />Screen Candidate</>)}
                 </button>
                 {error && <div className="mt-3 text-red-500 text-sm flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</div>}
