@@ -355,15 +355,19 @@ export default function App() {
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
 
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
-  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard()); 
+  const [leaderboardData, setLeaderboardData] = useState({}); // Initializing directly to {}
   const handleClearLeaderboard = useCallback((jdHashToClear) => {
       setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
   }, []);
 
+  // Re-added the useEffect to load data after load (post-synchronous initialization)
   useEffect(() => {
-      const allData = getLeaderboard();
-      if (JSON.stringify(allData) !== JSON.stringify(leaderboardData)) { setLeaderboardData(allData); }
-  }, [analysis, currentJdHash]);
+    // Only attempt to load leaderboard data *after* the initial sync render
+    const initialData = getLeaderboard();
+    if (initialData && Object.keys(initialData).length > 0) {
+        setLeaderboardData(initialData);
+    }
+  }, []);
 
   useEffect(() => {
     const loadScript = (src) => {
