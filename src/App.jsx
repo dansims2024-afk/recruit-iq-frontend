@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// KEEP THIS set to TRUE to test in the Canvas/Demo window without crashing.
-// Set to FALSE only when deploying to a live server to use the Real API.
-const ENABLE_DEMO_MODE = true; 
+// Set to FALSE when deploying to a live server to use the Real API.
+const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
@@ -190,7 +189,7 @@ const updateLeaderboardUtility = (newEntry) => {
 const Logo = () => (
   <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
     <defs>
-      <linearGradient id="swirlBrand" x1="0%" y1="100%" y2="0%">
+      <linearGradient id="swirlBrand" x1="0%" y1="100%" x2="100%" y2="0%">
         <stop offset="0%" stopColor={BRAND.cyan} />
         <stop offset="100%" stopColor={BRAND.primaryBlue} />
       </linearGradient>
