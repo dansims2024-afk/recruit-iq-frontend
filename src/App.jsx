@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, UserPlus, UserX, Trash2, Zap, Download, Loader2, FileWarning, Mail, LogIn, LogOut, Building } from 'lucide-react';
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building } from 'lucide-react';
 
-// NOTE: Using localStorage for leaderboard persistence.
+// NOTE: Using localStorage for leaderboard persistence only.
 const localStorageKey = 'hm_copilot_leaderboard_data';
-const usageKey = 'hm_copilot_screen_count';
-const userSessionKey = 'hm_copilot_user_session';
-const usersDbKey = 'hm_copilot_users_db';
-const MAX_FREE_SCREENS = 3;
 
 // --- CONFIGURATION ---
 const apiKey = ""; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-const USER_ID_PLACEHOLDER = 'manager-demo-user-12345';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -137,65 +132,6 @@ const saveLeaderboard = (data) => {
     }
 };
 
-const getUsageCount = () => {
-    try {
-        const count = localStorage.getItem(usageKey);
-        return parseInt(count, 10) || 0;
-    } catch (e) {
-        return 0;
-    }
-};
-
-const saveUsageCount = (count) => {
-    try {
-        localStorage.setItem(usageKey, count.toString());
-    } catch (e) {
-        console.error("Error saving usage count:", e);
-    }
-};
-
-const getUserSession = () => {
-    try {
-        const session = localStorage.getItem(userSessionKey);
-        return session ? JSON.parse(session) : null;
-    } catch (e) {
-        return null;
-    }
-};
-
-const saveUserSession = (user) => {
-    try {
-        if (user) localStorage.setItem(userSessionKey, JSON.stringify(user));
-        else localStorage.removeItem(userSessionKey);
-    } catch (e) {
-        console.error("Error saving user session", e);
-    }
-};
-
-const getUsersDb = () => {
-    try {
-        const db = localStorage.getItem(usersDbKey);
-        return db ? JSON.parse(db) : [];
-    } catch (e) { return []; }
-};
-
-const saveUserToDb = (user) => {
-    const users = getUsersDb();
-    if (users.find(u => u.email === user.email)) {
-        throw new Error("User already exists");
-    }
-    users.push(user);
-    localStorage.setItem(usersDbKey, JSON.stringify(users));
-};
-
-const authenticateUser = (email, password) => {
-    const users = getUsersDb();
-    const user = users.find(u => u.email === email && u.password === password);
-    if (!user) throw new Error("Invalid email or password");
-    const { password: _, ...safeUser } = user;
-    return safeUser;
-};
-
 const extractCandidateName = (resumeContent) => {
     if (!resumeContent) return 'Unnamed Candidate';
     const lines = resumeContent.trim().split('\n');
@@ -273,81 +209,6 @@ const Logo = () => (
     <path d="M 88 45 C 90 55, 88 65, 82 75 L 80 72 C 85 65, 86 55, 84 48 Z" fill={BRAND.orchid} />
     <path d="M 70 22 C 80 25, 85 35, 85 45 L 88 42 C 85 30, 75 20, 65 20 Z" fill={BRAND.deepPurple} />
   </svg>
-);
-
-const AuthModal = ({ onClose, onLogin, initialIsSignUp }) => {
-    const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
-    const [fullName, setFullName] = useState('');
-    const [companyName, setCompanyName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        setTimeout(() => {
-            try {
-                if (isSignUp) {
-                    const newUser = { id: 'user_' + Math.random().toString(36).substr(2, 9), email: email.toLowerCase(), password: password, name: fullName, company: companyName, plan: 'free' };
-                    saveUserToDb(newUser);
-                    const { password: _, ...safeUser } = newUser;
-                    onLogin(safeUser);
-                } else {
-                    const user = authenticateUser(email.toLowerCase(), password);
-                    onLogin(user);
-                }
-            } catch (err) { setError(err.message); setLoading(false); }
-        }, 1000);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 print:hidden">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md animate-in zoom-in duration-300 relative border-t-4 border-[#52438E]">
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-[#52438E]"><X size={20} /></button>
-                <h2 className="text-2xl font-bold text-[#2B81B9] mb-2 text-center">{isSignUp ? 'Create Your Profile' : 'Welcome Back'}</h2>
-                <p className="text-slate-500 text-sm text-center mb-6">{isSignUp ? 'Join Recruit-IQ to save candidates and track your hiring.' : 'Log in to access your dashboard.'}</p>
-                {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4 flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {isSignUp && (
-                        <>
-                        <div><label className="block text-xs font-bold text-slate-600 uppercase mb-1">Full Name</label><div className="relative"><User size={16} className="absolute left-3 top-3 text-[#b2acce]" /><input type="text" required className="w-full p-3 pl-10 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" placeholder="Jane Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} /></div></div>
-                        <div><label className="block text-xs font-bold text-slate-600 uppercase mb-1">Company Name</label><div className="relative"><Building size={16} className="absolute left-3 top-3 text-[#b2acce]" /><input type="text" required className="w-full p-3 pl-10 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" placeholder="Acme Corp" value={companyName} onChange={(e) => setCompanyName(e.target.value)} /></div></div>
-                        </>
-                    )}
-                    <div><label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email Address</label><input type="email" required className="w-full p-3 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-                    <div><label className="block text-xs font-bold text-slate-600 uppercase mb-1">Password</label><input type="password" required className="w-full p-3 border border-[#b2acce] rounded-lg focus:ring-2 focus:ring-[#00c9ff] outline-none" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-                    <button type="submit" disabled={loading} className="w-full py-3 bg-[#52438E] text-white rounded-xl font-bold hover:opacity-90 transition-all flex justify-center gap-2 items-center shadow-md">{loading ? <Loader2 className="animate-spin w-5 h-5" /> : (isSignUp ? 'Create Profile' : 'Log In')}</button>
-                </form>
-                <div className="mt-6 text-center text-sm text-slate-500">{isSignUp ? "Already have an account? " : "Don't have an account? "} <button onClick={() => { setIsSignUp(!isSignUp); setError(null); }} className="text-[#2B81B9] font-bold hover:underline">{isSignUp ? 'Log In' : 'Create Profile'}</button></div>
-            </div>
-        </div>
-    );
-};
-
-const PaywallModal = ({ onClose, onSubscribe, currentUser }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 print:hidden">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center animate-in zoom-in duration-300 relative border-t-4 border-[#52438E]">
-            <Zap size={36} className="text-[#8C50A1] mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-[#2B81B9] mb-2">Unlock Unlimited Screening</h3>
-            <p className="text-slate-600 mb-6">You've hit the limit of **{MAX_FREE_SCREENS} free candidate analyses** ({screensUsed}/{MAX_FREE_SCREENS} used).</p>
-            {!currentUser ? (
-                <div className="space-y-4">
-                     <div className="bg-[#b2acce]/20 border border-[#b2acce] p-4 rounded-lg text-sm text-[#2B81B9] mb-4 font-medium">Please create a profile or log in to subscribe to the Pro plan.</div>
-                     <button onClick={() => { setShowPaywallModal(false); setAuthInitialSignUp(true); setShowAuthModal(true); }} className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#52438E] to-[#8C50A1] hover:opacity-90 shadow-lg transition-all transform active:scale-[0.98]">Create Profile / Log In</button>
-                     <button onClick={onClose} className="text-[#b2acce] text-sm hover:text-slate-600 underline">Not now</button>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    <button onClick={onSubscribe} className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#00c9ff] to-[#2B81B9] hover:opacity-90 shadow-lg shadow-[#00c9ff]/40 transition-all transform active:scale-[0.98]">Unlock Unlimited Screening ($29/Month)</button>
-                    <button onClick={() => { window.open(`mailto:sales@corecreativity.ai?subject=Inquiry%20about%20Team%20License%20for%20Recruit-IQ`, '_blank'); onClose(); }} className="w-full py-3 rounded-xl font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 transition-colors border border-[#b2acce]">Contact Our Team</button>
-                </div>
-            )}
-            <div className="mt-4 text-xs text-[#b2acce]">(Clicking **Unlock** simulates payment & resets counter)</div>
-        </div>
-    </div>
 );
 
 const MatchScoreCard = ({ analysis, onCopySummary }) => {
@@ -486,18 +347,19 @@ export default function App() {
   const [toolLoading, setToolLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState('professional'); 
   const [libsLoaded, setLibsLoaded] = useState(false);
-  const [screensUsed, setScreensUsed] = useState(getUsageCount()); 
-  const [showPaywallModal, setShowPaywallModal] = useState(false);
   
-  const [currentUser, setCurrentUser] = useState(getUserSession());
+  // Since we removed freemium, these are now initialized directly
+  const [screensUsed, setScreensUsed] = useState(0); 
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authInitialSignUp, setAuthInitialSignUp] = useState(false);
+  const [currentUserId] = useState('anonymous_unlimited'); // Retained for internal tracking
 
   // --- EFFECT AND SESSION LOGIC ---
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
-  const handleLogin = (user) => { setCurrentUser(user); saveUserSession(user); setShowAuthModal(false); };
-  const handleLogout = () => { setCurrentUser(null); saveUserSession(null); };
-
+  // Removed handleLogin, handleLogout
+  
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
   const [leaderboardData, setLeaderboardData] = useState(getLeaderboard()); 
   const handleClearLeaderboard = useCallback((jdHashToClear) => {
@@ -527,17 +389,12 @@ export default function App() {
   
   // --- CORE CALLBACKS (Must be defined before usage in JSX/other callbacks) ---
   
-  const handleSubscriptionSuccess = () => { saveUsageCount(0); setScreensUsed(0); setShowPaywallModal(false); setError(null); };
-  const handleSubscribe = async () => { setToolLoading(true); setError(null); try { console.log(`Simulating payment initiation for user ${USER_ID_PLACEHOLDER}`); handleSubscriptionSuccess(); } catch (err) { console.error(err); setError("Failed to initiate subscription. Try Contact Our Team."); } finally { setToolLoading(false); } };
-
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null); setError(null); setCandidateName('');
-    setShowPaywallModal(false);
-    saveUsageCount(0);
-    setScreensUsed(0);
-  }, [setJobDescription, setResume, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool, setError, setCandidateName, setShowPaywallModal, setScreensUsed]);
+    // No more freemium state to reset here
+  }, [setJobDescription, setResume, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool, setError, setCandidateName]);
 
   const handleLoadExample = useCallback(() => {
     setJobDescription(FULL_EXAMPLE_JD);
@@ -664,7 +521,7 @@ Best,
   // --- Core Analysis Logic ---
   const handleAnalyze = async () => {
     if (!jobDescription.trim() || !resume.trim()) { setError("Please fill in Job Description and Resume."); setActiveTab('jd'); return; }
-    if (screensUsed >= MAX_FREE_SCREENS && currentUser?.plan !== 'pro') { setShowPaywallModal(true); setError(`Free screening limit reached (${screensUsed}/${MAX_FREE_SCREENS}).`); return; }
+    
     const extractedName = extractCandidateName(resume);
     setCandidateName(extractedName);
     setLoading(true); setError(null); setAnalysis(null); 
@@ -718,9 +575,7 @@ Best,
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
-        const newScreensUsed = screensUsed + 1;
-        setScreensUsed(newScreensUsed);
-        saveUsageCount(newScreensUsed);
+        // Removed usage count updates
         const newEntry = { jdHash: currentJdHash, name: extractedName, score: score, summary: parsedResult.fitSummary };
         if (extractedName !== 'Unnamed Candidate' && score > 0) { updateLeaderboardUtility(newEntry); }
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
@@ -748,27 +603,15 @@ Best,
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2"><Logo /><h1 className="font-bold text-xl tracking-tight text-slate-800">Core Creativity<span className="text-[#2B81B9]">AI</span></h1></div>
           <div className="flex items-center gap-4">
-              {currentUser ? ( <div className="flex items-center gap-2 text-sm font-medium text-slate-600"><div className="w-8 h-8 rounded-full bg-[#2B81B9] text-white flex items-center justify-center font-bold">{currentUser.name.charAt(0).toUpperCase()}</div><span className="hidden md:inline">{currentUser.name}</span><button onClick={handleLogout} className="ml-2 text-slate-400 hover:text-red-500" title="Log Out"><LogOut size={16} /></button></div> ) : ( <div className="flex items-center gap-3"><button onClick={() => { setAuthInitialSignUp(false); setShowAuthModal(true); }} className="flex items-center gap-1 text-sm font-semibold text-[#52438E] hover:text-[#2B81B9]"><LogIn size={16} /> Sign In</button><button onClick={() => { setAuthInitialSignUp(true); setShowAuthModal(true); }} className="bg-[#52438E] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#2B81B9] transition-colors shadow-sm">Get Started</button></div> )}
               <div className="text-sm font-medium bg-[#52438E] text-white px-3 py-1 rounded-full shadow-sm hidden sm:block">Recruit-IQ / Candidate Match Analyzer</div>
           </div>
         </div>
       </header>
       
-      {/* Freemium Info Bar */}
-      <div className="bg-[#00c9ff]/10 text-slate-700 py-2 print:hidden">
-        <div className="max-w-6xl mx-auto px-4 text-center text-sm font-medium">
-            <span className="font-bold text-[#2B81B9]">First {MAX_FREE_SCREENS} Screens are FREE!</span> | Remaining: <span className="font-extrabold text-red-600">{MAX_FREE_SCREENS - screensUsed}</span>
-            {screensUsed >= MAX_FREE_SCREENS && (
-                <button onClick={() => setShowPaywallModal(true)} className="ml-2 text-[#52438E] underline hover:text-[#00c9ff]"> (Unlock Unlimited)</button>
-            )}
-        </div>
-      </div>
-      
       {copyFeedback && <div className="fixed top-4 right-1/2 translate-x-1/2 mt-2 z-50 px-4 py-2 rounded-xl text-white font-medium shadow-lg bg-emerald-500">{copyFeedback}</div>}
       
-      {showAuthModal && ( <AuthModal onClose={() => setShowAuthModal(false)} onLogin={handleLogin} initialIsSignUp={authInitialSignUp} /> )}
+      {/* Removed AuthModal and PaywallModal logic */}
       
-      {showPaywallModal && ( <PaywallModal MAX_FREE_SCREENS={MAX_FREE_SCREENS} screensUsed={screensUsed} onClose={() => setShowPaywallModal(false)} onSubscribe={handleSubscribe} onReset={handleClearLeaderboard} currentUser={currentUser} onOpenAuth={() => { setShowPaywallModal(false); setAuthInitialSignUp(true); setShowAuthModal(true); }} /> )}
 
       <main className="max-w-6xl mx-auto p-4 md:p-6">
         <AppSummary />
@@ -821,7 +664,13 @@ Best,
                   </div>
               ) : (
                   <div className="h-full flex flex-col overflow-hidden">
-                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                      {/* NEW HEADER FOR OUTPUT */}
+                      <div className="bg-white rounded-t-2xl px-6 py-3 border-b border-slate-200">
+                          <h2 className="text-lg font-bold text-[#52438E] flex items-center gap-2">
+                              Results and Additional Tools
+                          </h2>
+                      </div>
+                      <div className="flex-1 overflow-y-auto custom-scrollbar pt-3 px-2">
                           <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(generateSummaryText())} />
                           <CommunicationTools 
                               activeTool={activeTool}
