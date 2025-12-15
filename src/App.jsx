@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// Set to FALSE when deploying to a live server to use the Real API.
-const ENABLE_DEMO_MODE = false; 
+// KEEP THIS set to TRUE to test in the Canvas/Demo window without crashing.
+// Set to FALSE only when deploying to a live server to use the Real API.
+const ENABLE_DEMO_MODE = true; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** PASTE YOUR API KEY HERE FOR LIVE DEPLOYMENT ***
-const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
+// *** WARNING: DO NOT PASTE YOUR API KEY HERE. USE YOUR HOSTING SERVICE'S ENVIRONMENT VARIABLES. ***
+const apiKey = ""; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
