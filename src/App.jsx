@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// Set to FALSE for production deployment.
-const ENABLE_DEMO_MODE = false; 
+// Set to FALSE to use the Real API when deployed to your live site.
+// Set to TRUE to test in this Demo Window without crashing.
+const ENABLE_DEMO_MODE = true; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// API Key and URL are retained for clarity, but the live fetch logic relies 
-// exclusively on the relative proxy path: /api/analyze
+// *** YOUR API KEY FOR LIVE DEPLOYMENT ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -27,86 +27,60 @@ Location: Phoenix, AZ
 Job Type: Full-Time, Exempt
 Reports To: Accounting Manager
 🌟 About Stellar Dynamics Corp.
-Stellar Dynamics Corp. is a rapidly growing tech startup focused on revolutionizing sustainable energy storage solutions. We are a dynamic, fast-paced organization committed to financial excellence and operational efficiency. We are seeking a detail-oriented and motivated Staff Accountant to join our Finance team and contribute to our mission of building a cleaner, brighter future.
+Stellar Dynamics is a rapidly growing tech startup focused on revolutionizing sustainable energy storage solutions.
 
 📝 Key Responsibilities
-The Staff Accountant will play a crucial role in maintaining accurate financial records and supporting the month-end close process. Key responsibilities include:
+The Staff Accountant will play a crucial role in maintaining accurate financial records and supporting the month-end close process.
+* General Ledger (GL) Management: Prepare and post journal entries.
+* Month-End Close: Assist in the timely completion of the monthly financial close process.
+* Accounts Payable (AP) & Receivable (AR): Process invoices and monitor balances.
+* Fixed Assets: Maintain the fixed asset register.
+* Tax & Compliance: Assist with external audits and sales tax filings.
 
-General Ledger (GL) Management:
-Prepare and post journal entries, including accruals, prepayments, and reclassifications.
-Perform monthly GL account reconciliations and analysis to ensure accuracy and resolve discrepancies.
-Month-End Close:
-Assist in the timely and accurate completion of the monthly, quarterly, and annual financial close process.
-Generate and review supporting schedules and reports for financial statements.
-Accounts Payable (AP) & Accounts Receivable (AR):
-Process vendor invoices and manage weekly payment runs.
-Assist with the invoicing of customers and monitor outstanding AR balances.
-Fixed Assets:
-Maintain the fixed asset register, including tracking additions, disposals, and calculating monthly depreciation.
-Tax & Compliance:
-Assist with documentation for external audits and compliance requirements.
-Support the preparation of sales and use tax filings.
-Ad-Hoc Projects:
-Participate in process improvement initiatives and system upgrades within the Finance department.
 🎯 Qualifications
-Required:
-Education: Bachelor's degree in Accounting, Finance, or a related field.
-Experience: 1-3 years of experience in an accounting role, preferably within a corporate setting.
-Technical Skills: Strong proficiency in Microsoft Excel (pivot tables, VLOOKUPs, etc.) and experience with a major ERP system (e.g., SAP, Oracle, or NetSuite).
-Foundational Knowledge: Solid understanding of Generally Accepted Accounting Principles (GAAP).
-Preferred:
-CPA track or desire to pursue certification.
-Experience in the technology or manufacturing industries.
+* Education: Bachelor's degree in Accounting or Finance.
+* Experience: 1-3 years of experience in an accounting role.
+* Technical Skills: Strong proficiency in Microsoft Excel and ERP systems (e.g., NetSuite).
+* Foundational Knowledge: Solid understanding of GAAP.
+
 ✨ Skills & Competencies
-Detail-Oriented: Exceptional attention to detail and accuracy in data entry and analysis.
-Organizational Skills: Excellent time management and ability to meet strict deadlines.
-Communication: Strong verbal and written communication skills to interact effectively with internal teams.
-Problem-Solving: Proactive approach to identifying and resolving accounting issues.
+* Detail-Oriented and strong organizational skills.
+* Strong communication skills.
+* Proactive problem-solving approach.
+
 💵 Benefits & Perks
-Competitive salary and performance-based bonus.
-Generous paid time off and paid holidays.
-Comprehensive health, dental, and vision insurance plans.
-401(k) matching program.
-Casual dress code and flexible work arrangements (e.g., hybrid schedule).
-On-site gym and complimentary snacks/beverages.`;
+Competitive salary, 401(k), paid time off, and health insurance.`;
   
 const EXAMPLE_RESUME = `Soda McTasty
-(555) 123-4567 | soda.mctasty@email.com | Phoenix, AZ 85001 | https://www.google.com/search?q=linkedin.com/in/sodamctasty
+(555) 123-4567 | soda.mctasty@email.com | Phoenix, AZ
 
 Professional Summary
-Highly motivated and detail-oriented Junior Accountant with 1.5 years of hands-on experience in financial record maintenance, general ledger management, and supporting full-cycle accounting functions. Proven ability to execute month-end closing procedures and enhance data accuracy. Eager to leverage strong GAAP foundation and technical proficiency to contribute to a fast-paced corporate finance team. Currently studying to sit for the Certified Public Accountant (CPA) exam.
+Highly motivated Junior Accountant with 1.5 years of experience in financial record maintenance and GL management. Proven ability to execute month-end closing procedures. Eager to leverage strong GAAP foundation. Currently studying for CPA exam.
 
 Experience
 Junior Accountant
-"Desert Bloom" Event Management, Phoenix, AZJanuary 2024 – Present
+"Desert Bloom" Event Management, Phoenix, AZ (Jan 2024 – Present)
+* Managed Accounts Payable (AP) for 50+ vendors.
+* Prepared and posted 40+ routine journal entries monthly.
+* Assisted in month-end close, reconciling six key balance sheet accounts.
+* Maintained fixed asset records and depreciation schedules.
+* Supported external auditors with documentation.
 
-Managed the end-to-end Accounts Payable (AP) process for 50+ vendors, ensuring timely invoice processing, three-way matching, and managing weekly payment schedules.
-Prepared and posted 40+ routine and non-routine journal entries monthly, including accruals for operating expenses and prepaid asset amortization.
-Assisted the Accounting Manager in the month-end close process, successfully reconciling six key balance sheet accounts, including bank accounts and customer deposits.
-Maintained detailed records of property and equipment, calculating and recording monthly depreciation using the straight-line method.
-Supported external auditors by preparing organized documentation and supporting schedules for payroll liabilities and cash balances.
 Accounting Intern
-Swift Financial Consulting, Tempe, AZMay 2023 – December 2023
+Swift Financial Consulting, Tempe, AZ (May 2023 – Dec 2023)
+* Provided technical support for bookkeeping activities.
+* Developed intermediate Excel proficiency (VLOOKUP, Pivot Tables).
 
-Provided administrative and technical support for bookkeeping activities, processing 15-20 transactions daily for multiple small business clients.
-Developed intermediate proficiency in Microsoft Excel, utilizing VLOOKUP and Pivot Tables to aggregate large data sets for budget vs. actual variance analysis.
-Maintåained confidential client files and ensured adherence to data retention policies.
 Education
-Bachelor of Science in Accounting
-Arizona State University (ASU), Tempe, AZGraduation: December 2023
+BS in Accounting, Arizona State University (Dec 2023). GPA: 3.8/4.0.
 
-GPA: 3.8/4.0, Cum Laude
-Relevant Coursework: Advanced Financial Accounting, Federal Taxation, Auditing, Business Ethics
-Skills & Technical Proficiency
-Accounting Software: QuickBooks Online (Advanced), Microsoft Dynamics GP (Basic exposure/training), Sage 50.
-Data Analysis: Microsoft Excel (Advanced), Microsoft Office Suite, Google Sheets.
-Knowledge: Strong understanding of U.S. GAAP, Financial Reporting, and General Ledger Reconciliation.
-Certifications: CPA Candidate (Planning to sit for the first exam section in Q2 2025).
-Awards & Recognition
-ASU Dean's List (2022, 2023)
-Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
+Skills
+* Software: QuickBooks Online, Microsoft Dynamics GP, Sage 50.
+* Data Analysis: Microsoft Excel (Advanced), Google Sheets.
+* Knowledge: U.S. GAAP, Financial Reporting.
+* Certifications: CPA Candidate.`;
 
-// --- Utility Functions (HOISTED TO TOP) ---
+// --- Utility Functions ---
 
 const hashJobDescription = (jd) => {
     let hash = 0;
@@ -247,7 +221,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
     
     return (
         <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce}/20">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
@@ -466,9 +440,10 @@ export default function App() {
   const generateContent = useCallback(async (toolType, prompt) => {
     setToolLoading(true); setError(null); setActiveTool(toolType);
     
+    // --- DEMO MODE CHECK FOR EMAIL GENERATION ---
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-        await new Promise(resolve => setTimeout(resolve, 800)); 
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
         const name = extractCandidateName(resume) || "Candidate";
         const mockInvite = `Subject: Interview Invitation: Staff Accountant at Stellar Dynamics Corp.
 
@@ -501,9 +476,10 @@ Best,
         return;
     }
 
-    // --- REAL API LOGIC: Using Proxy Endpoint for Email Generation ---
+    // --- REAL API LOGIC ---
     try {
-        const proxyUrl = `/api/analyze`; // Target proxy endpoint
+        // *** USING RELATIVE PROXY PATH: /api/analyze ***
+        const proxyUrl = `/api/analyze`; 
         
         const response = await fetch(proxyUrl, {
             method: 'POST',
@@ -534,7 +510,8 @@ Best,
             setError("AI returned an empty response for drafting.");
         }
     } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
-  }, [resume, apiKey]); // Retaining apiKey for consistency, though it's unused in this fetch
+  }, [resume, apiKey]);
+
 
   const handleDraft = useCallback((type) => {
       if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
