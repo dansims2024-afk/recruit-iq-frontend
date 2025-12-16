@@ -3,11 +3,14 @@ import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
+// --- CONFIGURATION ---
+// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
+const ENABLE_DEMO_MODE = false; 
+
 // *** API KEY CONFIGURATION ***
-// Using Direct API mode. 
+// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-// Switched to STABLE 1.5 Flash model to prevent hanging/spooling
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -134,14 +137,14 @@ const hashJobDescription = (jd) => {
 
 const getLeaderboard = () => {
     try {
-        const data = localStorage.getItem('hm_copilot_leaderboard_data');
+        const data = localStorage.getItem(localStorageKey);
         return data ? JSON.parse(data) : {};
     } catch (e) { return {}; }
 };
 
 const saveLeaderboard = (data) => {
     try {
-        localStorage.setItem('hm_copilot_leaderboard_data', JSON.stringify(data));
+        localStorage.setItem(localStorageKey, JSON.stringify(data));
     } catch (e) { }
 };
 
@@ -245,40 +248,6 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
       </div>
     </div>
   );
-};
-
-const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboardData }) => {
-    const currentList = leaderboardData[jdHash] || [];
-    const sortedList = currentList.sort((a, b) => b.score - a.score).slice(0, 10);
-    const handleDeleteLeaderboard = () => { if (window.confirm("Are you sure you want to clear the entire leaderboard for this Job Description? This action cannot be undone.")) { onClear(jdHash); } };
-    
-    return (
-        <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
-                <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
-                <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
-            </div>
-            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce}/20">
-                {sortedList.map((candidate, index) => {
-                    const isCurrent = candidate.name === currentCandidateName;
-                    let rankColor = 'bg-[#b2acce]';
-                    if (index === 0) rankColor = 'bg-[#00c9ff]'; if (index === 1) rankColor = 'bg-[#2B81B9]'; if (index === 2) rankColor = 'bg-[#52438E]';
-                    return (
-                        <div key={candidate.name + index} className={`p-4 flex items-center justify-between transition-all ${isCurrent ? 'bg-[#00c9ff]/10 border-l-4 border-[#00c9ff]' : 'hover:bg-slate-50'}`}>
-                            <div className="flex items-center gap-3"><div className={`w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center ${rankColor}`}>{index + 1}</div><div><div className="font-semibold text-slate-800">{candidate.name} {isCurrent && <span className="text-[10px] ml-1 bg-[#2B81B9] text-white px-1 py-0.5 rounded-full">CURRENT</span>}</div></div></div>
-                            <div className="flex items-center gap-2"><div className={`font-bold text-lg ${candidate.score >= 80 ? 'text-[#00c9ff]' : candidate.score >= 50 ? 'text-[#8C50A1]' : 'text-red-600'}`}>{candidate.score}%</div><div className="w-16 h-1 bg-[#b2acce}/30 rounded-full overflow-hidden"><div className={`h-full ${candidate.score >= 80 ? 'bg-[#00c9ff]' : candidate.score >= 50 ? 'bg-[#8C50A1]' : 'bg-red-500'}`} style={{ width: `${candidate.score}%` }}/></div></div>
-                        </div>
-                    );
-                })}
-            </div>
-            {sortedList.length === 0 && (
-                <div className="text-center py-8">
-                    <Zap size={24} className="text-[#00c9ff] mx-auto mb-2" />
-                    <p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p>
-                </div>
-            )}
-        </div>
-    );
 };
 
 const InterviewQuestionsSection = ({ questions }) => (
@@ -404,22 +373,61 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
+  const readPdf = async (arrayBuffer) => { 
+      if (window.pdfjsLib) {
+          const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let text = "";
+          for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const content = await page.getTextContent();
+              const strings = content.items.map(item => item.str);
+              text += strings.join(" ") + "\n";
+          }
+          return text;
+      }
+      return "PDF content extracted.";
+  };
+  const readDocx = async (arrayBuffer) => { 
+      if (window.mammoth) {
+          const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+          return result.value;
+      }
+      return "DOCX content extracted."; 
+  };
+  
+  const processText = useCallback((text, type, fileName) => {
+      let cleanedText = text.replace(/[\uFFFD\u0000-\u001F\u007F-\u009F\u200B]/g, ' ').trim();
+      if (!cleanedText || cleanedText.length < 50) { setError(`Could not extract clean text from ${fileName}. Please copy/paste.`); setLoading(false); return; }
+      if (type === 'jd') { setJobDescription(cleanedText); setActiveTab('resume'); } 
+      else { setResume(cleanedText); setCandidateName(extractCandidateName(cleanedText)); }
+      setLoading(false);
+  }, []);
+
   // --- File/Content Utility Functions ---
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true); setError(null);
-    
-    // Simulate loading, then set basic text
-    setTimeout(() => {
-        const mockText = type === 'jd' ? FULL_EXAMPLE_JD : EXAMPLE_RESUME;
-        if (type === 'jd') { setJobDescription(mockText); setActiveTab('resume'); } 
-        else { setResume(mockText); setCandidateName(extractCandidateName(mockText)); }
-        setLoading(false);
-    }, 500);
-
-    e.target.value = null; // Clear file input
-  }, []);
+    const isBinaryFile = file.type.includes('pdf') || file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc');
+    if (isBinaryFile && !libsLoaded) { setError("File parsers are still loading. Please wait a moment and try again."); setLoading(false); e.target.value = null; return; }
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        let text = ""; const fileType = file.type;
+        try {
+            if (isBinaryFile) {
+                if (fileType.includes("pdf")) { text = await readPdf(event.target.result); } 
+                else if (fileType.includes("wordprocessingml.document") || file.name.endsWith('.docx')) { text = await readDocx(event.target.result); } 
+                else { text = event.target.result; } 
+            } else { 
+                text = event.target.result; 
+            }
+            processText(text, type, file.name);
+        } catch (err) { console.error("File parsing error:", err); setError(`Error reading ${file.name}. Please copy text manually.`); setLoading(false); }
+    };
+    if (isBinaryFile || file.type.includes('octet-stream')) { reader.readAsArrayBuffer(file); } 
+    else { reader.readAsText(file); }
+    e.target.value = null;
+  }, [libsLoaded, processText]);
   
   const setDrafts = useCallback((type, value) => {
       if (type === 'invite') setInviteDraft(value);
@@ -432,23 +440,24 @@ export default function App() {
     
     // --- DEMO MODE CHECK FOR EMAIL GENERATION ---
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-    
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Timeout
+    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+        const name = extractCandidateName(resume) || "Candidate";
+        const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
+        const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
+        
+        if (toolType === 'invite') setInviteDraft(mockInvite);
+        if (toolType === 'outreach') setOutreachDraft(mockOutreach);
+        setToolLoading(false);
+        return;
+    }
 
+    try {
         const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-            signal: controller.signal
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
@@ -457,18 +466,15 @@ export default function App() {
         } else {
             setError("AI returned an empty response.");
         }
-    } catch (err) { 
-        setError(`Failed to generate content: ${err.message}`); 
-    } finally { setToolLoading(false); }
-  }, [resume, apiKey]);
+    } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
+  }, [resume]);
 
 
   const handleDraft = useCallback((type) => {
       if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
       const name = extractCandidateName(resume);
       setCandidateName(name);
-      
-      const basePrompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate: ${name}. Task: Write a ${type === 'invite' ? 'interview invitation' : 'cold outreach'} email based on the resume below.\n\nJD: ${jobDescription}\nResume: ${resume}`;
+      const prompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate: ${name}. Task: Write a ${type === 'invite' ? 'interview invitation' : 'cold outreach'} email based on the resume below.\n\nJD: ${jobDescription}\nResume: ${resume}`;
       generateContent(type, prompt);
   }, [resume, jobDescription, generateContent, selectedTone]);
 
@@ -477,9 +483,6 @@ export default function App() {
     // DIRECT API CALL TO GOOGLE GEMINI
     const prompt = `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}`;
     
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Timeout
-
     try {
       const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
@@ -487,10 +490,8 @@ export default function App() {
         body: JSON.stringify({ 
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: "application/json" }
-        }),
-        signal: controller.signal
+        })
       });
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
           const errorText = await response.text();
@@ -516,17 +517,7 @@ export default function App() {
     } catch (err) { 
         console.error("API Call Failed, showing Mock Data:", err); 
         // --- FALLBACK MOCK DATA SET ---
-        // This ensures that even if the network blocks the call (like in Canvas), you see SOMETHING.
-        const mockScore = 85;
-        const mockParsedResult = {
-            matchScore: mockScore,
-            fitSummary: "MOCK DATA (API Failed - Check Key/CORS): Strong candidate with solid accounting foundation and relevant industry experience. Lacks direct ERP system expertise but shows strong aptitude for learning.",
-            strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
-            gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
-            interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
-        };
-        
-        setAnalysis({ matchScore: mockScore, fitSummary: mockParsedResult.fitSummary, strengths: mockParsedResult.strengths, gaps: mockParsedResult.gaps, interviewQuestions: mockParsedResult.interviewQuestions, });
+        setAnalysis(MOCK_ANALYSIS_DATA);
         setActiveTab('resume');
         setError(err.message || "Failed to analyze. API Blocked (CORS/Key Issue). Showing Mock Data.");
     } finally { 
@@ -544,10 +535,24 @@ export default function App() {
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
     // MOCK EXECUTION FOR DEMO WINDOW
-    if (isCanvasEnvironment) {
+    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          console.log("Canvas detected, using mock.");
          setTimeout(() => {
-             setAnalysis(MOCK_ANALYSIS_DATA);
+             const mockScore = 88;
+             const mockParsedResult = {
+                matchScore: mockScore,
+                fitSummary: "MOCK DATA: Strong candidate match based on keywords.",
+                strengths: ["Relevant Experience", "Technical Skills"],
+                gaps: ["Specific ERP knowledge"],
+                interviewQuestions: ["Describe your experience with month-end close."]
+            };
+             setAnalysis({ 
+                 matchScore: mockScore, 
+                 fitSummary: mockParsedResult.fitSummary, 
+                 strengths: mockParsedResult.strengths, 
+                 gaps: mockParsedResult.gaps, 
+                 interviewQuestions: mockParsedResult.interviewQuestions 
+             });
              setActiveTab('resume');
              setLoading(false); 
          }, 1500); 
@@ -637,7 +642,7 @@ export default function App() {
                           </h2>
                       </div>
                       <div className="flex-1 overflow-y-auto custom-scrollbar pt-3 px-2">
-                          <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(generateSummaryText())} />
+                          <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(analysis.summary)} />
                           <CommunicationTools 
                               activeTool={activeTool}
                               setActiveTool={setActiveTool}
