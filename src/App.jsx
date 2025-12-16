@@ -247,7 +247,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
     
     return (
         <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce}/20">
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
@@ -494,7 +494,7 @@ Best,
 
     // --- REAL API LOGIC ---
     try {
-        // *** CHANGE 1: Use relative path to call the secure proxy ***
+        // *** USING RELATIVE PROXY PATH ***
         const proxyUrl = `/api/analyze`; 
         
         const response = await fetch(proxyUrl, {
@@ -503,11 +503,10 @@ Best,
             body: JSON.stringify({ 
                 jobDescription: jobDescription, // Pass JD and Resume to proxy
                 resume: resume,
-                prompt: prompt 
+                prompt: prompt // Pass the prompt intended for email generation
             }) 
         });
 
-        // The proxy should return the text directly, so we need to adjust handling if it returns JSON
         const data = await response.json();
         const text = data.text || data.analysis?.text || data.analysis?.content;
         
@@ -522,7 +521,7 @@ Best,
 
 
   const handleDraft = useCallback((type) => {
-      if (!resume.trim() || !jobDescription.trim()) { setError("Please enter both a JD and Resume."); return; }
+      if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
       const name = extractCandidateName(resume);
       setCandidateName(name);
       
@@ -543,11 +542,10 @@ Best,
     const extractedName = extractCandidateName(resume);
     const currentJdHash = hashJobDescription(jobDescription);
 
+    const proxyUrl = `/api/analyze`;
+    
     try {
       // REAL FETCH LOGIC (Only runs in live Vercel environment)
-      // *** CHANGE 2: Use relative path to call the secure proxy ***
-      const proxyUrl = `/api/analyze`;
-      
       const response = await fetch(proxyUrl, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
@@ -558,11 +556,16 @@ Best,
       });
       
       if (!response.ok) {
-          throw new Error(`Proxy Error: ${response.status}`);
+          // Attempt to get error details if response is not OK
+          const errorText = await response.text();
+          throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
       }
       
-      const data = await response.json();
-      const parsedResult = data.analysis; // Expecting the proxy to return the parsed analysis object
+      const data = await response.json().catch(err => {
+           throw new Error(`Failed to parse JSON response from proxy. Server returned non-JSON data.`);
+      });
+      
+      const parsedResult = data.analysis; 
 
       if(parsedResult && parsedResult.matchScore !== undefined) {
         let score = 0;
@@ -575,7 +578,7 @@ Best,
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error("No valid analysis returned from proxy.");
+         throw new Error("No valid analysis object returned from AI/proxy.");
       }
     } catch (err) { 
         console.error(err); 
