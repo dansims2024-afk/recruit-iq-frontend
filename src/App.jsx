@@ -2,15 +2,16 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// Set to TRUE to test in the Canvas/Demo window without crashing.
-// Set to FALSE only when deploying to a live server to use the Real API.
-const ENABLE_DEMO_MODE = true; 
+// Set to FALSE to use the Real API when deployed to your live site.
+// Set to TRUE to force Mock Data on the live site (for demo purposes).
+// Note: The app will ALWAYS use Mock Data inside the Canvas preview to prevent crashes.
+const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** API Key and URL are now only for mock data / local testing. The live deployment
-//     MUST use the Vercel Environment Variable GEMINI_API_KEY. ***
-// Removed hardcoded apiKey to prevent security flaws.
+// *** YOUR API KEY FOR LIVE DEPLOYMENT ***
+const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -121,14 +122,14 @@ const hashJobDescription = (jd) => {
 
 const getLeaderboard = () => {
     try {
-        const data = localStorage.getItem(localStorageKey);
+        const data = localStorage.getItem('hm_copilot_leaderboard_data');
         return data ? JSON.parse(data) : {};
     } catch (e) { return {}; }
 };
 
 const saveLeaderboard = (data) => {
     try {
-        localStorage.setItem(localStorageKey, JSON.stringify(data));
+        localStorage.setItem('hm_copilot_leaderboard_data', JSON.stringify(data));
     } catch (e) { }
 };
 
@@ -536,7 +537,7 @@ Best,
             setError("AI returned an empty response for drafting.");
         }
     } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
-  }, [resume, jobDescription]);
+  }, [resume, apiKey]);
 
 
   const handleDraft = useCallback((type) => {
@@ -616,11 +617,12 @@ Best,
     
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
-    // **MOCK EXECUTION** Check immediately and handle mock synchronously to prevent fetch initialization crash
+    // **FINAL FIX** Check immediately and handle mock synchronously to prevent fetch initialization crash
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          try {
              // --- SYNCHRONOUS MOCK EXECUTION (AVOIDS ASYNC CRASH) ---
              console.log("Canvas Network Block detected, engaging mock mode.");
+             // Removed setError for mock mode to reduce visual clutter for user
 
              const mockScore = 85;
              const mockParsedResult = {
@@ -664,7 +666,7 @@ Best,
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-slate-900">
-      <style>{`@media print { body > #root > div > main { max-width: none !important; margin: 0 !important; padding: 0 !important; } .print-area { width: 8.5in; height: 11in; padding: 0.5in; } .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
+      <style>{`@media print { body > #root > div > main { max-width: none !important; margin: 0 !important; padding: 0 !important; } .print-area { width: 8.5in; height: 11in; padding: 0.5in; } .print\\:hidden { display: none !important; } } .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10 print:hidden">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2"><Logo /><h1 className="font-bold text-xl tracking-tight text-slate-800">Core Creativity<span className="text-[#2B81B9]">AI</span></h1></div>
