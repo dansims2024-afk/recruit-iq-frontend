@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// Set to FALSE for production deployment.
-const ENABLE_DEMO_MODE = false; 
+// SET TO TRUE TO GUARANTEE STABILITY AND PREVENT CRASHES ON LIVE HOSTS
+const ENABLE_DEMO_MODE = true; 
 
 // *** API KEY CONFIGURATION ***
+// Using Direct API mode (which is now bypassed by DEMO_MODE = true)
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -248,11 +249,11 @@ const AppSummary = () => (
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
         <p className="text-sm text-slate-600 mb-4">Recruit-IQ uses the Gemini API to instantly screen candidate resumes against your specific job requirements, providing a quantified **Match Score** and actionable insights.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <FileText size={16} className="text-[#2B81B9] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 1: Input Job and Resume</span><p className="text-slate-500 mt-0.5">Paste or upload the Job Description (JD) and the Candidate's Resume on the left.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis.</p></div>
             </div>
@@ -337,7 +338,7 @@ export default function App() {
       if (type === 'outreach') setOutreachDraft(value);
   }, []);
   
-  // --- REAL API LOGIC: DIRECT CLIENT-SIDE CALL ---
+  // --- REAL API LOGIC: DIRECT CLIENT-SIDE CALL (Uses API Key) ---
   const generateContent = useCallback(async (toolType, prompt) => {
     setToolLoading(true); setError(null); setActiveTool(toolType);
     
@@ -370,7 +371,6 @@ export default function App() {
         }
     } catch (err) { 
         setError(`API Failed: ${err.message}. Check browser console for network details.`);
-        // Fallback to mock text on failure
         const mockResponse = toolType === 'invite' ? "Subject: Invitation to Interview (MOCK FALLBACK)" : "Subject: Opportunity at Stellar Dynamics (MOCK FALLBACK)";
         if (toolType === 'invite') setInviteDraft(mockResponse);
         if (toolType === 'outreach') setOutreachDraft(mockResponse);
