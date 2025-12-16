@@ -5,7 +5,7 @@ import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, 
 // SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
 const ENABLE_DEMO_MODE = false; 
 
-const localStorageKey = 'hm_copilot_leaderboard_data'; 
+const localStorageKey = 'hm_copilot_leaderboard_data'; // REMAINING KEY FOR REFERENCE, BUT NO LONGER USED
 
 // *** API KEY CONFIGURATION ***
 // WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
@@ -124,46 +124,6 @@ const extractCandidateName = (resumeContent) => {
     return firstLine.split('|')[0].trim() || 'Unnamed Candidate';
 };
 
-const hashJobDescription = (jd) => {
-    let hash = 0;
-    if (!jd || jd.length === 0) return "default";
-    for (let i = 0; i < jd.length; i++) {
-        const char = jd.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; 
-    }
-    return Math.abs(hash).toString(36);
-};
-
-const getLeaderboard = () => {
-    try {
-        const data = localStorage.getItem(localStorageKey);
-        return data ? JSON.parse(data) : {};
-    } catch (e) { return {}; }
-};
-
-const saveLeaderboard = (data) => {
-    try {
-        localStorage.setItem(localStorageKey, JSON.stringify(data));
-    } catch (e) { }
-};
-
-const updateLeaderboardUtility = (newEntry) => {
-    const allData = getLeaderboard();
-    let currentList = allData[newEntry.jdHash] || [];
-    const existingIndex = currentList.findIndex(c => c.name === newEntry.name);
-    if (existingIndex !== -1 && currentList[existingIndex].score === newEntry.score) {
-        return; 
-    }
-    if (existingIndex !== -1) {
-        currentList[existingIndex] = newEntry;
-    } else {
-        currentList.push(newEntry);
-    }
-    const updatedLeaderboard = { ...allData, [newEntry.jdHash]: currentList };
-    saveLeaderboard(updatedLeaderboard);
-};
-
 let setCopyFeedbackGlobal = null; 
 const handleCopy = (text) => {
     const textArea = document.createElement('textarea');
@@ -226,7 +186,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
   const colorClass = isHighFit ? 'from-[#00c9ff] to-[#2B81B9]' : score >= 50 ? 'from-[#8C50A1] to-[#52438E]' : 'from-red-500 to-red-700';
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
       <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2"><Percent size={14} className="text-[#00c9ff]" />Candidate Scorecard</div>
         <button onClick={onCopySummary} disabled={!analysis.matchScore} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 disabled:opacity-50 transition-colors print:hidden"><Copy size={12} /> Copy Summary</button>
@@ -253,7 +213,7 @@ const InterviewQuestionsSection = ({ questions }) => (
   <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
     <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2"><HelpCircle size={14} className="text-[#00c9ff]" />Suggested Interview Questions</h2>
     <div className="grid grid-cols-1 gap-3">
-      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce}/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
+      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce]/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
     </div>
   </div>
 );
@@ -278,7 +238,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft' : 'Custom Interview Email'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
-              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce}/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
+              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
               <div className="mt-3 flex justify-end"><button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button></div>
           </div>
       )}
@@ -290,15 +250,15 @@ const AppSummary = () => (
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
         <p className="text-sm text-slate-600 mb-4">Recruit-IQ uses the Gemini API to instantly screen candidate resumes against your specific job requirements, providing a quantified **Match Score** and actionable insights.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <FileText size={16} className="text-[#2B81B9] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 1: Input Job and Resume</span><p className="text-slate-500 mt-0.5">Paste the Job Description (JD) and the Candidate's Resume below.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <Percent size={16} className="text-[#00c9ff] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 3: Review Results</span><p className="text-slate-500 mt-0.5">Instantly receive a Match Score, Strengths, Gaps, and tailored Interview Questions.</p></div>
             </div>
@@ -446,6 +406,8 @@ export default function App() {
         const parsedResult = JSON.parse(textResult);
         let score = parsedResult.matchScore;
         if (typeof score === 'string') score = parseInt(score.replace(/[^0-9]/g, ''));
+        
+        // No Leaderboard update logic needed here
         
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary, strengths: parsedResult.strengths, gaps: parsedResult.gaps, interviewQuestions: parsedResult.interviewQuestions });
         setActiveTab('resume');
