@@ -8,6 +8,7 @@ const ENABLE_DEMO_MODE = false;
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
 // *** YOUR API KEY IS HERE FOR DEPLOYMENT (AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o) ***
+// NOTE: This key is now ONLY used in the client-side mock logic if ENABLE_DEMO_MODE=true.
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -493,20 +494,30 @@ Best,
 
     // --- REAL API LOGIC ---
     try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        // *** CHANGE 1: Use relative path to call the secure proxy ***
+        const proxyUrl = `/api/analyze`; 
+        
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({ 
+                jobDescription: jobDescription, // Pass JD and Resume to proxy
+                resume: resume,
+                prompt: prompt 
+            }) 
         });
+
+        // The proxy should return the text directly, so we need to adjust handling if it returns JSON
         const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const text = data.text || data.analysis?.text || data.analysis?.content;
+        
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
             if (toolType === 'outreach') setOutreachDraft(text);
         } else {
             setError("AI returned an empty response for drafting.");
         }
-    } catch (err) { setError(`Failed to generate content.`); } finally { setToolLoading(false); }
+    } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
   }, [resume, apiKey]);
 
 
@@ -534,26 +545,26 @@ Best,
 
     try {
       // REAL FETCH LOGIC (Only runs in live Vercel environment)
-      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      // *** CHANGE 2: Use relative path to call the secure proxy ***
+      const proxyUrl = `/api/analyze`;
+      
+      const response = await fetch(proxyUrl, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            contents: [{ parts: [{ text: `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}` }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            jobDescription: jobDescription,
+            resume: resume
         })
       });
       
       if (!response.ok) {
-          throw new Error(`API Error: ${response.status}`);
+          throw new Error(`Proxy Error: ${response.status}`);
       }
       
       const data = await response.json();
-      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if(textResult) {
-        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
-        const parsedResult = JSON.parse(cleanJson);
-        
+      const parsedResult = data.analysis; // Expecting the proxy to return the parsed analysis object
+
+      if(parsedResult && parsedResult.matchScore !== undefined) {
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
@@ -564,11 +575,11 @@ Best,
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error("No analysis returned from AI.");
+         throw new Error("No valid analysis returned from proxy.");
       }
     } catch (err) { 
         console.error(err); 
-        setError(err.message || "Failed to analyze. Please check your API key."); 
+        setError(err.message || "Failed to analyze. Check network connection or proxy configuration."); 
     } finally { 
         setLoading(false); 
     }
@@ -584,7 +595,7 @@ Best,
     
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
-    // **FINAL FIX** Check immediately and handle mock synchronously to prevent fetch initialization crash
+    // **MOCK EXECUTION** Check immediately and handle mock synchronously to prevent fetch initialization crash
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          try {
              // --- SYNCHRONOUS MOCK EXECUTION (AVOIDS ASYNC CRASH) ---
