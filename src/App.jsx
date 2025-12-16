@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
-// --- MANUAL CONFIGURATION ---
-// Set to FALSE to use the Real API when deployed to your live site.
-// Set to TRUE to force Mock Data on the live site (for demo purposes).
-// Note: The app will ALWAYS use Mock Data inside the Canvas preview to prevent crashes.
+// --- CONFIGURATION ---
+// Set to FALSE to use the Real API (Direct Connection)
 const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** YOUR API KEY FOR LIVE DEPLOYMENT ***
+// *** DIRECT API KEY CONFIGURATION ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -248,7 +246,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
     
     return (
         <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce}/20">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
@@ -503,33 +501,15 @@ Best,
         return;
     }
 
-    // --- REAL API LOGIC: Using Proxy Endpoint for Email Generation ---
-    const proxyUrl = `/api/analyze`; 
-    
+    // --- REAL API LOGIC: DIRECT CLIENT-SIDE CALL (Bypassing Server Proxy) ---
     try {
-        // We send the entire payload (including prompt) to the proxy
-        const response = await fetch(proxyUrl, {
+        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                jobDescription: jobDescription, 
-                resume: resume,
-                prompt: prompt 
-            }) 
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
-        }
-
-        const data = await response.json().catch(err => {
-             throw new Error(`Failed to parse JSON response from proxy (Email Generation).`);
-        });
-        
-        // Proxy returns the direct text from the AI (under the 'analysis' key)
-        const text = data.analysis; 
-        
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
             if (toolType === 'outreach') setOutreachDraft(text);
@@ -561,32 +541,50 @@ Best,
   const handleAnalyzeAsync = async () => {
     const extractedName = extractCandidateName(resume);
     const currentJdHash = hashJobDescription(jobDescription);
-    const proxyUrl = `/api/analyze`;
+    const prompt = `
+      Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter.
+      Return a valid JSON object (and ONLY the JSON object) with the following structure:
+      { 
+        "matchScore": number (0-100), 
+        "fitSummary": "string (brief assessment for hiring manager)", 
+        "strengths": ["str (top 3 matches)"], 
+        "gaps": ["str (top 3 missing requirements/red flags)"], 
+        "interviewQuestions": ["str"] 
+      }
+      
+      CRITICAL INSTRUCTION: Ensure all "interviewQuestions" are designed to elicit a quantifiable answer.
+
+      Job Description: ${jobDescription}
+      Candidate Resume: ${resume}
+    `;
 
     try {
-      // REAL FETCH LOGIC (Using Proxy Endpoint for Analysis)
-      const response = await fetch(proxyUrl, {
+      // --- REAL API LOGIC: DIRECT CLIENT-SIDE CALL (Bypassing Server Proxy) ---
+      // This is necessary because the user does not have a Vercel backend proxy set up.
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            jobDescription: jobDescription,
-            resume: resume
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
         })
       });
       
       if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
+          throw new Error(`Google API Error (${response.status}): ${errorText.substring(0, 100)}...`);
       }
       
       const data = await response.json().catch(err => {
-           throw new Error(`Failed to parse JSON response from proxy. Server returned non-JSON data.`);
+           throw new Error(`Failed to parse JSON response from Google API.`);
       });
       
-      // Expected proxy return: { analysis: { matchScore: ..., fitSummary: ..., strengths: ... } }
-      const parsedResult = data.analysis; 
+      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-      if(parsedResult && parsedResult.matchScore !== undefined) {
+      if(textResult) {
+        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
+        const parsedResult = JSON.parse(cleanJson);
+        
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
@@ -597,11 +595,11 @@ Best,
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error(`No valid analysis object returned from proxy. Check proxy logs for AI response errors.`);
+         throw new Error(`No valid analysis object returned from Google API.`);
       }
     } catch (err) { 
         console.error(err); 
-        setError(err.message || "Failed to analyze. Check network configuration or proxy logs."); 
+        setError(err.message || "Failed to analyze. Check network configuration or API Key."); 
     } finally { 
         setLoading(false); 
     }
