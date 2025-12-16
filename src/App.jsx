@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// Set to FALSE so it uses the Real API when deployed to your live site.
-// (The code below automatically detects this Demo Window to prevent crashes here).
-const ENABLE_DEMO_MODE = false; 
+// Set to FALSE to use the Real API when deployed to your live site.
+// Set to TRUE to test in this Demo Window without crashing.
+const ENABLE_DEMO_MODE = true; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
@@ -350,14 +350,13 @@ export default function App() {
   const [selectedTone, setSelectedTone] = useState('professional'); 
   const [libsLoaded, setLibsLoaded] = useState(false);
   
-  // Cleaned up unused freemium state variables
-  const [currentUserId] = useState('anonymous_unlimited'); 
+  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard());
 
   // --- EFFECT AND SESSION LOGIC ---
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
 
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
-  const [leaderboardData, setLeaderboardData] = useState({}); // Initializing directly to {}
+  
   const handleClearLeaderboard = useCallback((jdHashToClear) => {
       setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
   }, []);
@@ -387,13 +386,12 @@ export default function App() {
     }).catch(err => console.error("Failed to load file parsing libs", err));
   }, []);
   
-  // --- CORE CALLBACKS (Must be defined before usage in JSX/other callbacks) ---
-  
+  // --- CORE CALLBACKS ---
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null); setError(null); setCandidateName('');
-  }, [setJobDescription, setResume, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool, setError, setCandidateName]);
+  }, []);
 
   const handleLoadExample = useCallback(() => {
     setJobDescription(FULL_EXAMPLE_JD);
@@ -402,7 +400,7 @@ export default function App() {
     setError(null); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null);
-  }, [setJobDescription, setResume, setCandidateName, setError, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool]); 
+  }, []); 
 
   // --- File/Content Utility Functions ---
   const readPdf = async (arrayBuffer) => { 
@@ -433,7 +431,7 @@ export default function App() {
       if (type === 'jd') { setJobDescription(cleanedText); setActiveTab('resume'); } 
       else { setResume(cleanedText); setCandidateName(extractCandidateName(cleanedText)); }
       setLoading(false);
-  }, [setJobDescription, setActiveTab, setResume, setCandidateName, setError, setLoading]);
+  }, []);
 
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
@@ -577,7 +575,7 @@ Best,
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error("No analysis returned from AI.");
+         throw new Error("No valid analysis object returned from AI/proxy.");
       }
     } catch (err) { 
         console.error(err); 
@@ -713,6 +711,7 @@ Best,
                       <div className="bg-white rounded-t-2xl px-6 py-3 border-b border-slate-200">
                           <h2 className="text-lg font-bold text-[#52438E] flex items-center gap-2">
                               Results and Additional Tools
+                              <Sparkles size={18} className="text-[#00c9ff] ml-1" />
                           </h2>
                       </div>
                       <div className="flex-1 overflow-y-auto custom-scrollbar pt-3 px-2">
