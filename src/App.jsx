@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, Mail, UserPlus } from 'lucide-react';
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- CONFIGURATION ---
 // Set to FALSE to use the Real API when deployed.
@@ -236,6 +236,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
   </div>
 );
 
+
 const AppSummary = () => (
     <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
@@ -259,7 +260,6 @@ const AppSummary = () => (
 
 // --- Main App ---
 export default function App() { 
-  // --- STATE DEFINITIONS ---
   const [activeTab, setActiveTab] = useState('jd'); 
   const [jobDescription, setJobDescription] = useState('');
   const [resume, setResume] = useState('');
@@ -276,7 +276,6 @@ export default function App() {
   const [selectedTone, setSelectedTone] = useState('professional'); 
   const [libsLoaded, setLibsLoaded] = useState(false);
 
-  // --- EFFECT AND SESSION LOGIC ---
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
 
   useEffect(() => {
@@ -295,7 +294,6 @@ export default function App() {
     }).catch(err => console.error("Failed to load file parsing libs", err));
   }, []);
   
-  // --- CORE CALLBACKS ---
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
@@ -311,7 +309,36 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
-  // --- File/Content Utility Functions ---
+  const readPdf = async (arrayBuffer) => { 
+      if (window.pdfjsLib) {
+          const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let text = "";
+          for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const content = await page.getTextContent();
+              const strings = content.items.map(item => item.str);
+              text += strings.join(" ") + "\n";
+          }
+          return text;
+      }
+      return "PDF content extracted.";
+  };
+  const readDocx = async (arrayBuffer) => { 
+      if (window.mammoth) {
+          const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+          return result.value;
+      }
+      return "DOCX content extracted."; 
+  };
+  
+  const processText = useCallback((text, type, fileName) => {
+      let cleanedText = text.replace(/[\uFFFD\u0000-\u001F\u007F-\u009F\u200B]/g, ' ').trim();
+      if (!cleanedText || cleanedText.length < 50) { setError(`Could not extract clean text from ${fileName}. Please copy/paste.`); setLoading(false); return; }
+      if (type === 'jd') { setJobDescription(cleanedText); setActiveTab('resume'); } 
+      else { setResume(cleanedText); setCandidateName(extractCandidateName(cleanedText)); }
+      setLoading(false);
+  }, []);
+
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -320,23 +347,22 @@ export default function App() {
     if (isBinaryFile && !libsLoaded) { setError("File parsers are still loading. Please wait a moment and try again."); setLoading(false); e.target.value = null; return; }
     const reader = new FileReader();
     reader.onload = async (event) => {
-        let text = ""; 
+        let text = ""; const fileType = file.type;
         try {
             if (isBinaryFile) {
-                // PDF Parsing Logic simplified for brevity, assumes text extraction works
-                text = "Extracted text content from file..."; 
+                if (fileType.includes("pdf")) { text = await readPdf(event.target.result); } 
+                else if (fileType.includes("wordprocessingml.document") || file.name.endsWith('.docx')) { text = await readDocx(event.target.result); } 
+                else { text = event.target.result; } 
             } else { 
                 text = event.target.result; 
             }
-            if (type === 'jd') { setJobDescription(text); setActiveTab('resume'); } 
-            else { setResume(text); setCandidateName(extractCandidateName(text)); }
-            setLoading(false);
+            processText(text, type, file.name);
         } catch (err) { console.error("File parsing error:", err); setError(`Error reading ${file.name}. Please copy text manually.`); setLoading(false); }
     };
     if (isBinaryFile || file.type.includes('octet-stream')) { reader.readAsArrayBuffer(file); } 
     else { reader.readAsText(file); }
     e.target.value = null;
-  }, [libsLoaded]);
+  }, [libsLoaded, processText]);
   
   const setDrafts = useCallback((type, value) => {
       if (type === 'invite') setInviteDraft(value);
