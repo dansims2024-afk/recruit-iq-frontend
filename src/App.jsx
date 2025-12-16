@@ -201,7 +201,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
           <div className="font-semibold text-[#2B81B9] flex items-center gap-1 mb-2"><ThumbsUp size={14} /> Strong Matches</div>
           {strengths.length > 0 ? ( <ul className="space-y-1">{strengths.map((s, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#00c9ff] shrink-0" />{typeof s === 'string' ? s : JSON.stringify(s)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
-        <div className="bg-[#8C50A1]/5 border border-[#8C50A1]/20 rounded-xl p-4">
+        <div className="bg-[#8C50A1}/5 border border-[#8C50A1}/20 rounded-xl p-4">
           <div className="font-semibold text-[#8C50A1] flex items-center gap-1 mb-2"><ThumbsDown size={14} /> Red Flags / Gaps</div>
           {gaps.length > 0 ? ( <ul className="space-y-1">{gaps.map((g, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#8C50A1] shrink-0" />{typeof g === 'string' ? g : JSON.stringify(g)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
@@ -448,10 +448,10 @@ export default function App() {
     
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
-    // MOCK EXECUTION FOR DEMO WINDOW AND LIVE SITE (if true)
+    // --- FINAL SIMPLIFIED EXECUTION LOGIC ---
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+         // Force mock data synchronously in the demo environment
          console.log("Demo Mode active. Setting mock data.");
-         // Use setTimeout to simulate network lag, but keep the core logic synchronous for simplicity
          setTimeout(() => {
              setAnalysis(MOCK_ANALYSIS_DATA);
              setActiveTab('resume');
