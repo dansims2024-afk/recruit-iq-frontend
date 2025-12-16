@@ -3,8 +3,9 @@ import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, 
 
 // --- MANUAL CONFIGURATION ---
 // Set to FALSE to use the Real API when deployed to your live site.
-// Set to TRUE to test in this Demo Window without crashing.
-const ENABLE_DEMO_MODE = true; 
+// Set to TRUE to force Mock Data on the live site (for demo purposes).
+// Note: The app will ALWAYS use Mock Data inside the Canvas preview to prevent crashes.
+const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
@@ -27,58 +28,84 @@ Location: Phoenix, AZ
 Job Type: Full-Time, Exempt
 Reports To: Accounting Manager
 🌟 About Stellar Dynamics Corp.
-Stellar Dynamics is a rapidly growing tech startup focused on revolutionizing sustainable energy storage solutions.
+Stellar Dynamics Corp. is a rapidly growing tech startup focused on revolutionizing sustainable energy storage solutions. We are a dynamic, fast-paced organization committed to financial excellence and operational efficiency. We are seeking a detail-oriented and motivated Staff Accountant to join our Finance team and contribute to our mission of building a cleaner, brighter future.
 
 📝 Key Responsibilities
-The Staff Accountant will play a crucial role in maintaining accurate financial records and supporting the month-end close process.
-* General Ledger (GL) Management: Prepare and post journal entries.
-* Month-End Close: Assist in the timely completion of the monthly financial close process.
-* Accounts Payable (AP) & Receivable (AR): Process invoices and monitor balances.
-* Fixed Assets: Maintain the fixed asset register.
-* Tax & Compliance: Assist with external audits and sales tax filings.
+The Staff Accountant will play a crucial role in maintaining accurate financial records and supporting the month-end close process. Key responsibilities include:
 
+General Ledger (GL) Management:
+Prepare and post journal entries, including accruals, prepayments, and reclassifications.
+Perform monthly GL account reconciliations and analysis to ensure accuracy and resolve discrepancies.
+Month-End Close:
+Assist in the timely and accurate completion of the monthly, quarterly, and annual financial close process.
+Generate and review supporting schedules and reports for financial statements.
+Accounts Payable (AP) & Accounts Receivable (AR):
+Process vendor invoices and manage weekly payment runs.
+Assist with the invoicing of customers and monitor outstanding AR balances.
+Fixed Assets:
+Maintain the fixed asset register, including tracking additions, disposals, and calculating monthly depreciation.
+Tax & Compliance:
+Assist with documentation for external audits and compliance requirements.
+Support the preparation of sales and use tax filings.
+Ad-Hoc Projects:
+Participate in process improvement initiatives and system upgrades within the Finance department.
 🎯 Qualifications
-* Education: Bachelor's degree in Accounting or Finance.
-* Experience: 1-3 years of experience in an accounting role.
-* Technical Skills: Strong proficiency in Microsoft Excel and ERP systems (e.g., NetSuite).
-* Foundational Knowledge: Solid understanding of GAAP.
-
+Required:
+Education: Bachelor's degree in Accounting, Finance, or a related field.
+Experience: 1-3 years of experience in an accounting role, preferably within a corporate setting.
+Technical Skills: Strong proficiency in Microsoft Excel (pivot tables, VLOOKUPs, etc.) and experience with a major ERP system (e.g., SAP, Oracle, or NetSuite).
+Foundational Knowledge: Solid understanding of Generally Accepted Accounting Principles (GAAP).
+Preferred:
+CPA track or desire to pursue certification.
+Experience in the technology or manufacturing industries.
 ✨ Skills & Competencies
-* Detail-Oriented and strong organizational skills.
-* Strong communication skills.
-* Proactive problem-solving approach.
-
+Detail-Oriented: Exceptional attention to detail and accuracy in data entry and analysis.
+Organizational Skills: Excellent time management and ability to meet strict deadlines.
+Communication: Strong verbal and written communication skills to interact effectively with internal teams.
+Problem-Solving: Proactive approach to identifying and resolving accounting issues.
 💵 Benefits & Perks
-Competitive salary, 401(k), paid time off, and health insurance.`;
+Competitive salary and performance-based bonus.
+Generous paid time off and paid holidays.
+Comprehensive health, dental, and vision insurance plans.
+401(k) matching program.
+Casual dress code and flexible work arrangements (e.g., hybrid schedule).
+On-site gym and complimentary snacks/beverages.`;
   
 const EXAMPLE_RESUME = `Soda McTasty
-(555) 123-4567 | soda.mctasty@email.com | Phoenix, AZ
+(555) 123-4567 | soda.mctasty@email.com | Phoenix, AZ 85001 | https://www.google.com/search?q=linkedin.com/in/sodamctasty
 
 Professional Summary
-Highly motivated Junior Accountant with 1.5 years of experience in financial record maintenance and GL management. Proven ability to execute month-end closing procedures. Eager to leverage strong GAAP foundation. Currently studying for CPA exam.
+Highly motivated and detail-oriented Junior Accountant with 1.5 years of hands-on experience in financial record maintenance, general ledger management, and supporting full-cycle accounting functions. Proven ability to execute month-end closing procedures and enhance data accuracy. Eager to leverage strong GAAP foundation and technical proficiency to contribute to a fast-paced corporate finance team. Currently studying to sit for the Certified Public Accountant (CPA) exam.
 
 Experience
 Junior Accountant
-"Desert Bloom" Event Management, Phoenix, AZ (Jan 2024 – Present)
-* Managed Accounts Payable (AP) for 50+ vendors.
-* Prepared and posted 40+ routine journal entries monthly.
-* Assisted in month-end close, reconciling six key balance sheet accounts.
-* Maintained fixed asset records and depreciation schedules.
-* Supported external auditors with documentation.
+"Desert Bloom" Event Management, Phoenix, AZJanuary 2024 – Present
 
+Managed the end-to-end Accounts Payable (AP) process for 50+ vendors, ensuring timely invoice processing, three-way matching, and managing weekly payment schedules.
+Prepared and posted 40+ routine and non-routine journal entries monthly, including accruals for operating expenses and prepaid asset amortization.
+Assisted the Accounting Manager in the month-end close process, successfully reconciling six key balance sheet accounts, including bank accounts and customer deposits.
+Maintained detailed records of property and equipment, calculating and recording monthly depreciation using the straight-line method.
+Supported external auditors by preparing organized documentation and supporting schedules for payroll liabilities and cash balances.
 Accounting Intern
-Swift Financial Consulting, Tempe, AZ (May 2023 – Dec 2023)
-* Provided technical support for bookkeeping activities.
-* Developed intermediate Excel proficiency (VLOOKUP, Pivot Tables).
+Swift Financial Consulting, Tempe, AZMay 2023 – December 2023
 
+Provided administrative and technical support for bookkeeping activities, processing 15-20 transactions daily for multiple small business clients.
+Developed intermediate proficiency in Microsoft Excel, utilizing VLOOKUP and Pivot Tables to aggregate large data sets for budget vs. actual variance analysis.
+Maintåained confidential client files and ensured adherence to data retention policies.
 Education
-BS in Accounting, Arizona State University (Dec 2023). GPA: 3.8/4.0.
+Bachelor of Science in Accounting
+Arizona State University (ASU), Tempe, AZGraduation: December 2023
 
-Skills
-* Software: QuickBooks Online, Microsoft Dynamics GP, Sage 50.
-* Data Analysis: Microsoft Excel (Advanced), Google Sheets.
-* Knowledge: U.S. GAAP, Financial Reporting.
-* Certifications: CPA Candidate.`;
+GPA: 3.8/4.0, Cum Laude
+Relevant Coursework: Advanced Financial Accounting, Federal Taxation, Auditing, Business Ethics
+Skills & Technical Proficiency
+Accounting Software: QuickBooks Online (Advanced), Microsoft Dynamics GP (Basic exposure/training), Sage 50.
+Data Analysis: Microsoft Excel (Advanced), Microsoft Office Suite, Google Sheets.
+Knowledge: Strong understanding of U.S. GAAP, Financial Reporting, and General Ledger Reconciliation.
+Certifications: CPA Candidate (Planning to sit for the first exam section in Q2 2025).
+Awards & Recognition
+ASU Dean's List (2022, 2023)
+Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
 
 // --- Utility Functions ---
 
@@ -225,7 +252,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
-            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce}/20">
+            <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-[#b2acce]/20">
                 {sortedList.map((candidate, index) => {
                     const isCurrent = candidate.name === currentCandidateName;
                     let rankColor = 'bg-[#b2acce]';
@@ -478,31 +505,13 @@ Best,
 
     // --- REAL API LOGIC ---
     try {
-        // *** USING RELATIVE PROXY PATH: /api/analyze ***
-        const proxyUrl = `/api/analyze`; 
-        
         const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                jobDescription: jobDescription, 
-                resume: resume,
-                prompt: prompt 
-            }) 
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
-        }
-
-        const data = await response.json().catch(err => {
-             throw new Error(`Failed to parse JSON response from proxy (Email Generation).`);
-        });
-        
-        // Proxy returns the direct text from the AI
-        const text = data.analysis; 
-        
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
             if (toolType === 'outreach') setOutreachDraft(text);
@@ -534,33 +543,30 @@ Best,
   const handleAnalyzeAsync = async () => {
     const extractedName = extractCandidateName(resume);
     const currentJdHash = hashJobDescription(jobDescription);
-
     const proxyUrl = `/api/analyze`;
-    
+
     try {
       // REAL FETCH LOGIC (Only runs in live Vercel environment)
-      const response = await fetch(proxyUrl, {
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            jobDescription: jobDescription,
-            resume: resume
+            contents: [{ parts: [{ text: `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}` }] }],
+            generationConfig: { responseMimeType: "application/json" }
         })
       });
       
       if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
+          throw new Error(`API Error: ${response.status}`);
       }
       
-      const data = await response.json().catch(err => {
-           throw new Error(`Failed to parse JSON response from proxy. Server returned non-JSON data.`);
-      });
+      const data = await response.json();
+      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
       
-      // Expected proxy return: { analysis: { matchScore: ..., fitSummary: ..., strengths: ... } }
-      const parsedResult = data.analysis; 
-
-      if(parsedResult && parsedResult.matchScore !== undefined) {
+      if(textResult) {
+        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
+        const parsedResult = JSON.parse(cleanJson);
+        
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
@@ -571,11 +577,11 @@ Best,
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error(`No valid analysis object returned from proxy. Check proxy logs for AI response errors.`);
+         throw new Error("No analysis returned from AI.");
       }
     } catch (err) { 
         console.error(err); 
-        setError(err.message || "Failed to analyze. Check network configuration or proxy logs."); 
+        setError(err.message || "Failed to analyze. Please check your API key."); 
     } finally { 
         setLoading(false); 
     }
