@@ -9,7 +9,6 @@ const localStorageKey = 'hm_copilot_leaderboard_data';
 
 // *** API KEY CONFIGURATION ***
 // WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
-// Your key: AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -449,7 +448,7 @@ export default function App() {
     
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
-    // MOCK EXECUTION FOR DEMO WINDOW
+    // MOCK EXECUTION FOR DEMO WINDOW AND LIVE SITE (if true)
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          console.log("Demo Mode active. Setting mock data.");
          setTimeout(() => {
