@@ -2,16 +2,15 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// SET TO FALSE TO USE YOUR LIVE API KEY ON DEPLOYMENT
+// Set to FALSE so it uses the Real API when deployed to your live site.
+// (The code below automatically detects this Demo Window to prevent crashes here).
 const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** YOUR API KEY IS HERE FOR LIVE DEPLOYMENT (AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o) ***
-// NOTE: This key is now ONLY used in the client-side mock logic. 
-// The real API calls rely on the serverless function proxy to securely inject the key.
+// *** YOUR API KEY FOR LIVE DEPLOYMENT ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent'; // Retained only for mock purposes
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -202,7 +201,7 @@ const Logo = () => (
     </defs>
     <path d="M 45 15 C 25 15, 10 35, 15 60 C 16 68, 25 75, 35 75 C 40 75, 35 70, 30 65 C 20 50, 25 30, 45 25 C 50 23, 55 20, 45 15 Z" fill="url(#swirlBrand)" />
     <path d="M 12 55 C 10 45, 12 35, 18 25 L 20 28 C 15 35, 4 45, 16 52 Z" fill={BRAND.cyan} />
-    <path d="M 30 78 C 20 75, 15 65, 15 55 L 12 58 C 15 70, 25 80, 35 80 Z" fill="url(#swirlDeep)" />
+    <path d="M 30 78 C 20 75, 15 65, 15 55 L 12 58 C 15 70, 25 80, 35 80 Z" fill={BRAND.primaryBlue} />
     <path d="M 55 85 C 75 85, 90 65, 85 40 C 84 32, 75 25, 65 25 C 60 25, 65 30, 70 35 C 80 50, 75 70, 55 75 C 50 77, 45 80, 55 85 Z" fill="url(#swirlDeep)" />
     <path d="M 88 45 C 90 55, 88 65, 82 75 L 80 72 C 85 65, 86 55, 84 48 Z" fill={BRAND.orchid} />
     <path d="M 70 22 C 80 25, 85 35, 85 45 L 88 42 C 85 30, 75 20, 65 20 Z" fill={BRAND.deepPurple} />
@@ -265,6 +264,12 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
                     );
                 })}
             </div>
+            {sortedList.length === 0 && (
+                <div className="text-center py-8">
+                    <Zap size={24} className="text-[#00c9ff] mx-auto mb-2" />
+                    <p className="text-sm text-slate-500 italic">Scan candidates to start tracking them on the leaderboard.</p>
+                </div>
+            )}
         </div>
     );
 };
@@ -345,21 +350,26 @@ export default function App() {
   const [selectedTone, setSelectedTone] = useState('professional'); 
   const [libsLoaded, setLibsLoaded] = useState(false);
   
-  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard());
+  // Cleaned up unused freemium state variables
+  const [currentUserId] = useState('anonymous_unlimited'); 
 
   // --- EFFECT AND SESSION LOGIC ---
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
 
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
-  
+  const [leaderboardData, setLeaderboardData] = useState({}); // Initializing directly to {}
   const handleClearLeaderboard = useCallback((jdHashToClear) => {
       setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
   }, []);
 
+  // Re-added the useEffect to load data after load (post-synchronous initialization)
   useEffect(() => {
-      const allData = getLeaderboard();
-      if (JSON.stringify(allData) !== JSON.stringify(leaderboardData)) { setLeaderboardData(allData); }
-  }, [analysis, currentJdHash]);
+    // Only attempt to load leaderboard data *after* the initial sync render
+    const initialData = getLeaderboard();
+    if (initialData && Object.keys(initialData).length > 0) {
+        setLeaderboardData(initialData);
+    }
+  }, []);
 
   useEffect(() => {
     const loadScript = (src) => {
@@ -377,12 +387,13 @@ export default function App() {
     }).catch(err => console.error("Failed to load file parsing libs", err));
   }, []);
   
-  // --- CORE CALLBACKS ---
+  // --- CORE CALLBACKS (Must be defined before usage in JSX/other callbacks) ---
+  
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null); setError(null); setCandidateName('');
-  }, []);
+  }, [setJobDescription, setResume, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool, setError, setCandidateName]);
 
   const handleLoadExample = useCallback(() => {
     setJobDescription(FULL_EXAMPLE_JD);
@@ -391,7 +402,7 @@ export default function App() {
     setError(null); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
     setActiveTool(null);
-  }, []); 
+  }, [setJobDescription, setResume, setCandidateName, setError, setAnalysis, setInviteDraft, setOutreachDraft, setActiveTool]); 
 
   // --- File/Content Utility Functions ---
   const readPdf = async (arrayBuffer) => { 
@@ -422,7 +433,7 @@ export default function App() {
       if (type === 'jd') { setJobDescription(cleanedText); setActiveTab('resume'); } 
       else { setResume(cleanedText); setCandidateName(extractCandidateName(cleanedText)); }
       setLoading(false);
-  }, []);
+  }, [setJobDescription, setActiveTab, setResume, setCandidateName, setError, setLoading]);
 
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
@@ -494,32 +505,14 @@ Best,
     }
 
     // --- REAL API LOGIC ---
-    const proxyUrl = `/api/analyze`; 
-    
     try {
-        const response = await fetch(proxyUrl, {
+        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                jobDescription: jobDescription, 
-                resume: resume,
-                prompt: prompt 
-            }) 
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
-
-        if (!response.ok) {
-            // Attempt to get error details if response is not OK
-            const errorText = await response.text();
-            throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
-        }
-        
-        const data = await response.json().catch(err => {
-             throw new Error(`Failed to parse JSON response from proxy (Email Generation).`);
-        });
-
-        // Since proxy returns a structured JSON, we look for the direct text content
-        const text = data.text || data.analysis?.text || data.analysis?.content; 
-        
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
             if (toolType === 'outreach') setOutreachDraft(text);
@@ -552,32 +545,28 @@ Best,
     const extractedName = extractCandidateName(resume);
     const currentJdHash = hashJobDescription(jobDescription);
 
-    const proxyUrl = `/api/analyze`;
-    
     try {
       // REAL FETCH LOGIC (Only runs in live Vercel environment)
-      const response = await fetch(proxyUrl, {
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            jobDescription: jobDescription,
-            resume: resume
+            contents: [{ parts: [{ text: `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}` }] }],
+            generationConfig: { responseMimeType: "application/json" }
         })
       });
       
       if (!response.ok) {
-          // Attempt to get error details if response is not OK
-          const errorText = await response.text();
-          throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
+          throw new Error(`API Error: ${response.status}`);
       }
       
-      const data = await response.json().catch(err => {
-           throw new Error(`Failed to parse JSON response from proxy. Server returned non-JSON data.`);
-      });
+      const data = await response.json();
+      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
       
-      const parsedResult = data.analysis; 
-
-      if(parsedResult && parsedResult.matchScore !== undefined) {
+      if(textResult) {
+        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
+        const parsedResult = JSON.parse(cleanJson);
+        
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
@@ -588,11 +577,11 @@ Best,
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error("No valid analysis object returned from AI/proxy.");
+         throw new Error("No analysis returned from AI.");
       }
     } catch (err) { 
         console.error(err); 
-        setError(err.message || "Failed to analyze. Check network connection or proxy configuration."); 
+        setError(err.message || "Failed to analyze. Please check your API key."); 
     } finally { 
         setLoading(false); 
     }
@@ -608,11 +597,12 @@ Best,
     
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
-    // **MOCK EXECUTION** Check immediately and handle mock synchronously to prevent fetch initialization crash
+    // **FINAL FIX** Check immediately and handle mock synchronously to prevent fetch initialization crash
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          try {
              // --- SYNCHRONOUS MOCK EXECUTION (AVOIDS ASYNC CRASH) ---
              console.log("Canvas Network Block detected, engaging mock mode.");
+             // Removed setError for mock mode to reduce visual clutter for user
 
              const mockScore = 85;
              const mockParsedResult = {
