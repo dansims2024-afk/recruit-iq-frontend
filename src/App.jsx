@@ -7,7 +7,7 @@ const ENABLE_DEMO_MODE = false;
 
 const localStorageKey = 'hm_copilot_leaderboard_data'; 
 
-// *** API Key and URL are now ONLY used for the MOCK data if ENABLE_DEMO_MODE is true. ***
+// *** API Key and URL are no longer used in fetch calls, only for mock logic. ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -57,7 +57,7 @@ Preferred:
 CPA track or desire to pursue certification.
 Experience in the technology or manufacturing industries.
 ✨ Skills & Competencies
-Detail-Oriented: Exceptional attention to detail and accuracy in data entry and analysis.
+Detail-Orientered: Exceptional attention to detail and accuracy in data entry and analysis.
 Organizational Skills: Excellent time management and ability to meet strict deadlines.
 Communication: Strong verbal and written communication skills to interact effectively with internal teams.
 Problem-Solving: Proactive approach to identifying and resolving accounting issues.
@@ -248,11 +248,11 @@ const AppSummary = () => (
                 <FileText size={16} className="text-[#2B81B9] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 1: Input Job and Resume</span><p className="text-slate-500 mt-0.5">Paste or upload the Job Description (JD) and the Candidate's Resume on the left.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Percent size={16} className="text-[#00c9ff] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 3: Review Results</span><p className="text-slate-500 mt-0.5">Instantly receive a Match Score, Strengths, Gaps, and tailored Interview Questions.</p></div>
             </div>
@@ -316,7 +316,7 @@ export default function App() {
           const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
           let text = "";
           for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
+              const page = await page.getPage(i);
               const content = await page.getTextContent();
               const strings = content.items.map(item => item.str);
               text += strings.join(" ") + "\n";
@@ -631,7 +631,6 @@ Best,
                               setSelectedTone={setSelectedTone}
                               toolLoading={toolLoading}
                           />
-                          {/* Removed Leaderboard component */}
                           {analysis.interviewQuestions && analysis.interviewQuestions.length > 0 && <InterviewQuestionsSection questions={analysis.interviewQuestions} />}
                       </div>
                   </div>
