@@ -5,10 +5,7 @@ import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, 
 // SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
 const ENABLE_DEMO_MODE = false; 
 
-const localStorageKey = 'hm_copilot_leaderboard_data'; 
-
 // *** API KEY CONFIGURATION ***
-// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -106,14 +103,13 @@ Awards & Recognition
 ASU Dean's List (2022, 2023)
 Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
 
-// --- Utility Functions (HOISTED TO GLOBAL SCOPE to avoid ReferenceErrors) ---
+// --- Utility Functions (Stateless Only) ---
 
 const extractCandidateName = (resumeContent) => {
     if (!resumeContent) return 'Unnamed Candidate';
     const lines = resumeContent.trim().split('\n');
     const firstLine = lines.find(line => line.trim() !== '');
     if (!firstLine) return 'Unnamed Candidate';
-    // Basic heuristic: assume the first line is the name if it's short
     if (firstLine.length < 50 && !/[@\(\)\d]/.test(firstLine)) {
         return firstLine.trim();
     }
@@ -124,45 +120,7 @@ const extractCandidateName = (resumeContent) => {
     return firstLine.split('|')[0].trim() || 'Unnamed Candidate';
 };
 
-const hashJobDescription = (jd) => {
-    let hash = 0;
-    if (!jd || jd.length === 0) return "default";
-    for (let i = 0; i < jd.length; i++) {
-        const char = jd.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; 
-    }
-    return Math.abs(hash).toString(36);
-};
-
-const getLeaderboard = () => {
-    try {
-        const data = localStorage.getItem(localStorageKey);
-        return data ? JSON.parse(data) : {};
-    } catch (e) { return {}; }
-};
-
-const saveLeaderboard = (data) => {
-    try {
-        localStorage.setItem(localStorageKey, JSON.stringify(data));
-    } catch (e) { }
-};
-
-const updateLeaderboardUtility = (newEntry) => {
-    const allData = getLeaderboard();
-    let currentList = allData[newEntry.jdHash] || [];
-    const existingIndex = currentList.findIndex(c => c.name === newEntry.name);
-    if (existingIndex !== -1 && currentList[existingIndex].score === newEntry.score) {
-        return; 
-    }
-    if (existingIndex !== -1) {
-        currentList[existingIndex] = newEntry;
-    } else {
-        currentList.push(newEntry);
-    }
-    const updatedLeaderboard = { ...allData, [newEntry.jdHash]: currentList };
-    saveLeaderboard(updatedLeaderboard);
-};
+// Removed hashJobDescription, Leaderboard storage functions.
 
 let setCopyFeedbackGlobal = null; 
 const handleCopy = (text) => {
@@ -298,7 +256,7 @@ const AppSummary = () => (
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Percent size={16} className="text-[#00c9ff] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 3: Review Results</span><p className="text-slate-500 mt-0.5">Instantly receive a Match Score, Strengths, Gaps, and tailored Interview Questions.</p></div>
             </div>
@@ -340,7 +298,92 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
-  // --- Core Logic Simplification (Removed all local storage/leaderboard features) ---
+  // --- Simplified File/Content Utility Functions (Only reads text/markdown) ---
+  const handleFileUpload = useCallback(async (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLoading(true); setError(null);
+    
+    // Using FileReader to read text files, avoiding complex binary parsing
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const text = event.target.result;
+        // Directly update state without intermediate processing function
+        if (type === 'jd') { setJobDescription(text); setActiveTab('resume'); } 
+        else { setResume(text); setCandidateName(extractCandidateName(text)); }
+        setLoading(false);
+    };
+    reader.onerror = () => {
+        setError("Error reading file.");
+        setLoading(false);
+    };
+
+    // Only reading text to avoid crashing on PDF/DOCX
+    reader.readAsText(file);
+    e.target.value = null; 
+  }, []);
+  
+  const setDrafts = useCallback((type, value) => {
+      if (type === 'invite') setInviteDraft(value);
+      if (type === 'outreach') setOutreachDraft(value);
+  }, []);
+  
+  // --- MOCK FUNCTION for content generation (Drafts) ---
+  const generateContentMock = useCallback((toolType, prompt) => {
+    const name = extractCandidateName(resume) || "Candidate";
+    const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
+    const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
+    
+    if (toolType === 'invite') setInviteDraft(mockInvite);
+    if (toolType === 'outreach') setOutreachDraft(mockOutreach);
+    setToolLoading(false);
+    setActiveTool(toolType);
+  }, [resume]);
+
+
+  const handleDraft = useCallback(async (type) => {
+      if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
+      const name = extractCandidateName(resume);
+      setCandidateName(name);
+
+      setToolLoading(true);
+      setError(null);
+
+      const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+
+      if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+          // If in Demo Mode, use synchronous mock
+          setTimeout(() => generateContentMock(type), 500);
+          return;
+      }
+      
+      // REAL API CALL
+      const prompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate: ${name}. Task: Write a ${type === 'invite' ? 'interview invitation' : 'cold outreach'} email based on the resume below.\n\nJD: ${jobDescription}\nResume: ${resume}`;
+      
+      try {
+          const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (text) {
+              if (type === 'invite') setInviteDraft(text);
+              if (type === 'outreach') setOutreachDraft(text);
+          } else {
+              setError("AI returned an empty response.");
+              generateContentMock(type); // Fallback to mock text
+          }
+      } catch (err) { 
+          setError(`API Failed: ${err.message}. Check network connection.`);
+          generateContentMock(type); // Fallback to mock text
+      } finally { setToolLoading(false); }
+  }, [resume, jobDescription, selectedTone]);
+
+
+  // --- Core Analysis Logic (DIRECT API CALL) ---
   const handleAnalyzeAsync = async () => {
     const prompt = `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}`;
     
@@ -367,7 +410,7 @@ export default function App() {
         let score = parsedResult.matchScore;
         if (typeof score === 'string') score = parseInt(score.replace(/[^0-9]/g, ''));
         
-        // No local storage updates needed
+        // Removed leaderboard update logic
         
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary, strengths: parsedResult.strengths, gaps: parsedResult.gaps, interviewQuestions: parsedResult.interviewQuestions });
         setActiveTab('resume');
@@ -392,18 +435,34 @@ export default function App() {
     const extractedName = extractCandidateName(resume);
     setCandidateName(extractedName);
     
-    // DEMO MODE BYPASS
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+
+    // MOCK EXECUTION FOR DEMO WINDOW
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+         console.log("Canvas detected, using mock.");
          setTimeout(() => {
-             setAnalysis(MOCK_ANALYSIS_DATA);
+             const mockScore = 88;
+             const mockParsedResult = {
+                matchScore: mockScore,
+                fitSummary: "MOCK DATA: Strong candidate match based on keywords.",
+                strengths: ["Relevant Experience", "Technical Skills"],
+                gaps: ["Specific ERP knowledge"],
+                interviewQuestions: ["Describe your experience with month-end close."]
+            };
+             setAnalysis({ 
+                 matchScore: mockScore, 
+                 fitSummary: mockParsedResult.fitSummary, 
+                 strengths: mockParsedResult.strengths, 
+                 gaps: mockParsedResult.gaps, 
+                 interviewQuestions: mockParsedResult.interviewQuestions 
+             });
              setActiveTab('resume');
              setLoading(false); 
          }, 1500); 
          return;
     }
 
-    // REAL EXECUTION
+    // REAL EXECUTION FOR LIVE SITE
     handleAnalyzeAsync(); 
   };
   
@@ -494,8 +553,7 @@ export default function App() {
                               setSelectedTone={setSelectedTone}
                               toolLoading={toolLoading}
                           />
-                          {/* Removed Leaderboard, keeping Leaderboard component call for history/simplicity */}
-                          {analysis.interviewQuestions && analysis.interviewQuestions.length > 0 && <InterviewQuestionsSection questions={analysis.interviewQuestions} />}
+                          <InterviewQuestionsSection questions={analysis.interviewQuestions} />
                       </div>
                   </div>
               )}
