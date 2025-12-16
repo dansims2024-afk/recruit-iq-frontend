@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail, Trash2, Zap } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// SET TO FALSE to enable REAL API CALLS via the PROXY URL.
+// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
 const ENABLE_DEMO_MODE = false; 
 
-// *** PROXY CONFIGURATION ***
-// Frontend now calls its own backend serverless function (which holds the secret key).
-const PROXY_API_URL = '/api/analyze'; 
+// *** API KEY CONFIGURATION ***
+// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
+const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -145,7 +146,7 @@ const handleCopy = (text) => {
 // --- Mock Data Object (Used for Fallback) ---
 const MOCK_ANALYSIS_DATA = {
     matchScore: 85,
-    fitSummary: "MOCK DATA (Fallback): Strong candidate with solid accounting foundation. This result is shown because the API proxy failed to connect or return a valid response.",
+    fitSummary: "MOCK DATA (Fallback): Strong candidate with solid accounting foundation. This result is shown because the API call failed or timed out.",
     strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
     gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
     interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
@@ -243,19 +244,19 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
 );
 
 const AppSummary = () => (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
         <p className="text-sm text-slate-600 mb-4">Recruit-IQ uses the Gemini API to instantly screen candidate resumes against your specific job requirements, providing a quantified **Match Score** and actionable insights.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <FileText size={16} className="text-[#2B81B9] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 1: Input Job and Resume</span><p className="text-slate-500 mt-0.5">Paste the Job Description (JD) and the Candidate's Resume below.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Percent size={16} className="text-[#00c9ff] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 3: Review Results</span><p className="text-slate-500 mt-0.5">Instantly receive a Match Score, Strengths, Gaps, and tailored Interview Questions.</p></div>
             </div>
@@ -520,7 +521,7 @@ export default function App() {
                   <div className="h-full bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
                       <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Search size={32} className="text-slate-300" /></div>
                       <h3 className="text-lg font-medium text-slate-600 mb-2">Ready for Screening</h3>
-                      <p className="max-w-xs text-sm">Paste or upload a Job Description and Candidate Resume on the left to begin the AI screening process.</p>
+                      <p className="max-w-xs text-sm">Paste the Job Description and Candidate Resume on the left to begin the AI screening process.</p>
                   </div>
               ) : (
                   <div className="h-full flex flex-col overflow-hidden">
