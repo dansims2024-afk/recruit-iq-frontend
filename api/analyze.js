@@ -36,47 +36,57 @@ export default async function analyzeCandidate(req, res) {
     
     // --- Phase 1: Security and Data Validation ---
     
-    const { jobDescription, resume } = req.body;
+    const { jobDescription, resume, prompt } = req.body;
 
     if (!jobDescription || !resume) {
         return res.status(400).send({ error: 'Missing Job Description or Resume data.' });
     }
 
-    // --- Phase 2: Build the Prompt ---
-    const prompt = `
-      Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter.
-      Return a valid JSON object (and ONLY the JSON object) with the following structure:
-      { 
-        "matchScore": number (0-100), 
-        "fitSummary": "string (brief assessment for hiring manager)", 
-        "strengths": ["str (top 3 matches)"], 
-        "gaps": ["str (top 3 missing requirements/red flags)"], 
-        "interviewQuestions": ["str"] 
-      }
-      
-      CRITICAL INSTRUCTION: Ensure all "interviewQuestions" are designed to elicit a quantifiable answer.
+    // Use the custom prompt for email generation (when 'prompt' is present), otherwise use the analysis prompt
+    let finalPrompt = prompt;
 
-      Job Description: ${jobDescription}
-      Candidate Resume: ${resume}
-    `;
+    if (!finalPrompt) {
+        // --- Analysis Prompt ---
+        finalPrompt = `
+          Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter.
+          Return a valid JSON object (and ONLY the JSON object) with the following structure:
+          { 
+            "matchScore": number (0-100), 
+            "fitSummary": "string (brief assessment for hiring manager)", 
+            "strengths": ["str (top 3 matches)"], 
+            "gaps": ["str (top 3 missing requirements/red flags)"], 
+            "interviewQuestions": ["str"] 
+          }
+          
+          CRITICAL INSTRUCTION: Ensure all "interviewQuestions" are designed to elicit a quantifiable answer.
+
+          Job Description: ${jobDescription}
+          Candidate Resume: ${resume}
+        `;
+    }
     
     try {
         // --- Phase 3: Call the Secure AI ---
-        const jsonResultText = await callGeminiAPI(prompt);
+        const resultText = await callGeminiAPI(finalPrompt);
         
-        // Clean up common JSON errors before parsing
-        let cleanJson = jsonResultText.replace(/,(\s*[}\]])/g, '$1');
+        // --- Phase 4: Process and Return ---
+        
+        if (prompt) {
+            // If we sent a custom prompt (for email drafting), return the raw text
+            return res.status(200).json({ analysis: resultText });
+        }
+        
+        // If it was the analysis prompt, clean and parse the JSON
+        let cleanJson = resultText.replace(/,(\s*[}\]])/g, '$1');
         const parsedResult = JSON.parse(cleanJson);
         
-        // 4. Return the analysis result to the frontend
         res.status(200).json({ 
             analysis: parsedResult,
-            // We are not tracking usage now, but this placeholder is here for future monetization
             newUsageCount: 0 
         });
 
     } catch (error) {
-        console.error('Proxy Error during analysis:', error);
-        res.status(500).json({ error: 'Failed to process analysis request due to a server or AI error.' });
+        console.error('Proxy Fatal Error:', error.message || error);
+        res.status(500).json({ error: `Server Crash: ${error.message || 'Unknown internal function error.'}` });
     }
 }
