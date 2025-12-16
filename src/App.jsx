@@ -227,7 +227,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
   const colorClass = isHighFit ? 'from-[#00c9ff] to-[#2B81B9]' : score >= 50 ? 'from-[#8C50A1] to-[#52438E]' : 'from-red-500 to-red-700';
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
       <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2"><Percent size={14} className="text-[#00c9ff]" />Candidate Scorecard</div>
         <button onClick={onCopySummary} disabled={!analysis.matchScore} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 disabled:opacity-50 transition-colors print:hidden"><Copy size={12} /> Copy Summary</button>
@@ -265,7 +265,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
           {['professional', 'casual', 'direct'].map(tone => (
-              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce}/20'}`}>{tone}</button>
+              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce]/20'}`}>{tone}</button>
           ))}
       </div>
       {toolLoading && ( <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-[#2B81B9]" /> Generating Draft...</div> )}
@@ -342,21 +342,10 @@ export default function App() {
   }, [analysis, currentJdHash]);
 
   useEffect(() => {
-    const loadScript = (src) => {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-        const script = document.createElement('script'); script.src = src; script.onload = resolve; script.onerror = reject; document.head.appendChild(script);
-      });
-    };
-    Promise.all([
-      loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'),
-      loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js')
-    ]).then(() => {
-      if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
-      setLibsLoaded(true);
-    }).catch(err => console.error("Failed to load file parsing libs", err));
+    // NOTE: Removed external library loading logic to prevent ReferenceErrors
+    setLibsLoaded(true); 
   }, []);
-  
+
   // --- CORE CALLBACKS ---
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
@@ -373,28 +362,6 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
-  const readPdf = async (arrayBuffer) => { 
-      if (window.pdfjsLib) {
-          const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          let text = "";
-          for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const content = await page.getTextContent();
-              const strings = content.items.map(item => item.str);
-              text += strings.join(" ") + "\n";
-          }
-          return text;
-      }
-      return "PDF content extracted.";
-  };
-  const readDocx = async (arrayBuffer) => { 
-      if (window.mammoth) {
-          const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-          return result.value;
-      }
-      return "DOCX content extracted."; 
-  };
-  
   const processText = useCallback((text, type, fileName) => {
       let cleanedText = text.replace(/[\uFFFD\u0000-\u001F\u007F-\u009F\u200B]/g, ' ').trim();
       if (!cleanedText || cleanedText.length < 50) { setError(`Could not extract clean text from ${fileName}. Please copy/paste.`); setLoading(false); return; }
@@ -403,31 +370,27 @@ export default function App() {
       setLoading(false);
   }, []);
 
-  // --- File/Content Utility Functions ---
+  // --- Simplified File/Content Utility Functions (Only reads text/markdown) ---
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true); setError(null);
-    const isBinaryFile = file.type.includes('pdf') || file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc');
-    if (isBinaryFile && !libsLoaded) { setError("File parsers are still loading. Please wait a moment and try again."); setLoading(false); e.target.value = null; return; }
+    
+    // Using FileReader to read text files, avoiding complex binary parsing
     const reader = new FileReader();
-    reader.onload = async (event) => {
-        let text = ""; const fileType = file.type;
-        try {
-            if (isBinaryFile) {
-                if (fileType.includes("pdf")) { text = await readPdf(event.target.result); } 
-                else if (fileType.includes("wordprocessingml.document") || file.name.endsWith('.docx')) { text = await readDocx(event.target.result); } 
-                else { text = event.target.result; } 
-            } else { 
-                text = event.target.result; 
-            }
-            processText(text, type, file.name);
-        } catch (err) { console.error("File parsing error:", err); setError(`Error reading ${file.name}. Please copy text manually.`); setLoading(false); }
+    reader.onload = (event) => {
+        const text = event.target.result;
+        processText(text, type, file.name);
     };
-    if (isBinaryFile || file.type.includes('octet-stream')) { reader.readAsArrayBuffer(file); } 
-    else { reader.readAsText(file); }
-    e.target.value = null;
-  }, [libsLoaded, processText]);
+    reader.onerror = () => {
+        setError("Error reading file.");
+        setLoading(false);
+    };
+
+    // Only reading text to avoid crashing on PDF/DOCX
+    reader.readAsText(file);
+    e.target.value = null; 
+  }, [processText]);
   
   const setDrafts = useCallback((type, value) => {
       if (type === 'invite') setInviteDraft(value);
@@ -438,10 +401,9 @@ export default function App() {
   const generateContent = useCallback(async (toolType, prompt) => {
     setToolLoading(true); setError(null); setActiveTool(toolType);
     
-    // --- DEMO MODE CHECK FOR EMAIL GENERATION ---
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+    if (isCanvasEnvironment) {
+        await new Promise(resolve => setTimeout(resolve, 800)); 
         const name = extractCandidateName(resume) || "Candidate";
         const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
         const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
@@ -480,7 +442,6 @@ export default function App() {
 
   // --- Core Analysis Logic (DIRECT API CALL) ---
   const handleAnalyzeAsync = async () => {
-    // DIRECT API CALL TO GOOGLE GEMINI
     const prompt = `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}`;
     
     try {
@@ -535,7 +496,7 @@ export default function App() {
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
     // MOCK EXECUTION FOR DEMO WINDOW
-    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+    if (isCanvasEnvironment) {
          console.log("Canvas detected, using mock.");
          setTimeout(() => {
              const mockScore = 88;
@@ -600,8 +561,8 @@ export default function App() {
               <div className="p-3 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center print:hidden">
                   <label className={`flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border-2 border-transparent text-[#2B81B9] text-xs font-semibold hover:border-[#00c9ff] transition-all shadow-md hover:shadow-lg`} style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderImage: 'linear-gradient(to right, #00c9ff, #2B81B9) 1' }}>
                       <Download size={14} className="text-[#00c9ff]" style={{ color: '#00c9ff' }} />
-                      <span style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Upload File (.pdf, .docx, .txt)</span>
-                      <input type="file" className="hidden" accept=".txt, .md, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => handleFileUpload(e, activeTab === 'jd' ? 'jd' : 'resume')} disabled={!libsLoaded} />
+                      <span style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Upload File (.txt only)</span>
+                      <input type="file" className="hidden" accept=".txt, .md" onChange={(e) => handleFileUpload(e, activeTab === 'jd' ? 'jd' : 'resume')} disabled={!libsLoaded} />
                   </label>
                   <div className="flex gap-2 items-center">
                       <button onClick={handleLoadExample} className="text-xs font-medium text-[#2B81B9] hover:text-[#00c9ff] px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">Click for Example</button>
