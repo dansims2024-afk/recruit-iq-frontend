@@ -494,10 +494,9 @@ Best,
     }
 
     // --- REAL API LOGIC ---
+    const proxyUrl = `/api/analyze`; 
+    
     try {
-        // *** USING RELATIVE PROXY PATH: /api/analyze ***
-        const proxyUrl = `/api/analyze`; 
-        
         const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -508,7 +507,16 @@ Best,
             }) 
         });
 
-        const data = await response.json();
+        if (!response.ok) {
+            // Attempt to get error details if response is not OK
+            const errorText = await response.text();
+            throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
+        }
+        
+        const data = await response.json().catch(err => {
+             throw new Error(`Failed to parse JSON response from proxy (Email Generation).`);
+        });
+
         // Since proxy returns a structured JSON, we look for the direct text content
         const text = data.text || data.analysis?.text || data.analysis?.content; 
         
