@@ -2,15 +2,15 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// Set to FALSE for production deployment.
-// Note: The code below automatically uses Mock Data in the Canvas preview to prevent crashes here.
-const ENABLE_DEMO_MODE = false; 
+// Set to TRUE to test in the Canvas/Demo window without crashing.
+// Set to FALSE only when deploying to a live server to use the Real API.
+const ENABLE_DEMO_MODE = true; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** API Key and URL are now ONLY used for MOCK data if ENABLE_DEMO_MODE is true. ***
-const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+// *** API Key and URL are now only for mock data / local testing. The live deployment
+//     MUST use the Vercel Environment Variable GEMINI_API_KEY. ***
+// Removed hardcoded apiKey to prevent security flaws.
 
 // --- Brand Colors ---
 const BRAND = {
@@ -664,7 +664,7 @@ Best,
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-slate-900">
-      <style>{`@media print { body > #root > div > main { max-width: none !important; margin: 0 !important; padding: 0 !important; } .print-area { width: 8.5in; height: 11in; padding: 0.5in; } .print\\:hidden { display: none !important; } } .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
+      <style>{`@media print { body > #root > div > main { max-width: none !important; margin: 0 !important; padding: 0 !important; } .print-area { width: 8.5in; height: 11in; padding: 0.5in; } .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }`}</style>
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10 print:hidden">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2"><Logo /><h1 className="font-bold text-xl tracking-tight text-slate-800">Core Creativity<span className="text-[#2B81B9]">AI</span></h1></div>
