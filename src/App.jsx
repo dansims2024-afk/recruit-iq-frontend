@@ -220,7 +220,7 @@ const InterviewQuestionsSection = ({ questions }) => (
 );
 
 const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDraft, handleCopy, setDrafts, selectedTone, setSelectedTone, toolLoading }) => (
-  <div className="bg-[#f0e4f5] rounded-2xl shadow-md border border-[#8C50A1]/50 p-6">
+  <div className="bg-[#f0e4f5] rounded-2xl shadow-md border border-[#8C50A1}/50 p-6">
       <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><MessageCircle size={16} className="text-[#52438E]" /> Manager Actions</h4>
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
@@ -340,7 +340,7 @@ export default function App() {
       if (type === 'outreach') setOutreachDraft(value);
   }, []);
   
-  // --- SYNC MOCK FUNCTION for content generation (Drafts) ---
+  // --- MOCK FUNCTION for content generation (Drafts) ---
   const generateContentMock = useCallback((toolType, prompt) => {
     const name = extractCandidateName(resume) || "Candidate";
     const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
@@ -451,6 +451,7 @@ export default function App() {
     // MOCK EXECUTION FOR DEMO WINDOW AND LIVE SITE (if true)
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          console.log("Demo Mode active. Setting mock data.");
+         // Use setTimeout to simulate network lag, but keep the core logic synchronous for simplicity
          setTimeout(() => {
              setAnalysis(MOCK_ANALYSIS_DATA);
              setActiveTab('resume');
