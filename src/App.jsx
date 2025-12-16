@@ -3,12 +3,14 @@ import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, 
 
 // --- MANUAL CONFIGURATION ---
 // Set to FALSE for production deployment.
+// Note: The code below automatically uses Mock Data in the Canvas preview to prevent crashes here.
 const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** API Key is retained for mock purposes only, but should be managed by the server proxy. ***
+// *** API Key and URL are now ONLY used for MOCK data if ENABLE_DEMO_MODE is true. ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -534,7 +536,7 @@ Best,
             setError("AI returned an empty response for drafting.");
         }
     } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
-  }, [resume, apiKey, jobDescription]);
+  }, [resume, jobDescription]);
 
 
   const handleDraft = useCallback((type) => {
