@@ -2,15 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail, Trash2, Zap } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
+// SET TO FALSE to enable REAL API CALLS via the PROXY URL.
 const ENABLE_DEMO_MODE = false; 
 
-const localStorageKey = 'hm_copilot_leaderboard_data'; // REMAINING KEY FOR REFERENCE, BUT NO LONGER USED
-
-// *** API KEY CONFIGURATION ***
-// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
-const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+// *** PROXY CONFIGURATION ***
+// Frontend now calls its own backend serverless function (which holds the secret key).
+const PROXY_API_URL = '/api/analyze'; 
 
 // --- Brand Colors ---
 const BRAND = {
@@ -148,7 +145,7 @@ const handleCopy = (text) => {
 // --- Mock Data Object (Used for Fallback) ---
 const MOCK_ANALYSIS_DATA = {
     matchScore: 85,
-    fitSummary: "MOCK DATA (Fallback): Strong candidate with solid accounting foundation. This result is shown because the API call failed or timed out.",
+    fitSummary: "MOCK DATA (Fallback): Strong candidate with solid accounting foundation. This result is shown because the API proxy failed to connect or return a valid response.",
     strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
     gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
     interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
@@ -200,7 +197,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
           <div className="font-semibold text-[#2B81B9] flex items-center gap-1 mb-2"><ThumbsUp size={14} /> Strong Matches</div>
           {strengths.length > 0 ? ( <ul className="space-y-1">{strengths.map((s, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#00c9ff] shrink-0" />{typeof s === 'string' ? s : JSON.stringify(s)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
-        <div className="bg-[#8C50A1]/5 border border-[#8C50A1}/20 rounded-xl p-4">
+        <div className="bg-[#8C50A1]/5 border border-[#8C50A1]/20 rounded-xl p-4">
           <div className="font-semibold text-[#8C50A1] flex items-center gap-1 mb-2"><ThumbsDown size={14} /> Red Flags / Gaps</div>
           {gaps.length > 0 ? ( <ul className="space-y-1">{gaps.map((g, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#8C50A1] shrink-0" />{typeof g === 'string' ? g : JSON.stringify(g)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
@@ -230,7 +227,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
       {toolLoading && ( <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-[#2B81B9]" /> Generating Draft...</div> )}
       <div className="grid grid-cols-2 gap-3 mb-4">
           <button onClick={() => handleDraft('invite')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#00c9ff] text-slate-700 flex flex-col items-center gap-1 text-[#2B81B9] font-semibold hover:bg-[#00c9ff]/5 transition-all"><UserPlus size={16} className="text-[#00c9ff]" /> Custom Interview Email</button>
-          <button onClick={() => handleDraft('outreach')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#8C50A1] text-slate-700 flex flex-col items-center gap-1 text-[#8C50A1] font-semibold hover:bg-[#8C50A1]/5 transition-all"><Mail size={16} className="text-[#8C50A1]" /> Sourcing Email Draft</button>
+          <button onClick={() => handleDraft('outreach')} disabled={toolLoading} className="py-3 bg-white border border-[#b2acce] rounded-xl text-sm hover:border-[#8C50A1] text-slate-700 flex flex-col items-center gap-1 text-[#8C50A1] font-semibold hover:hover:bg-[#8C50A1]/5 transition-all"><Mail size={16} className="text-[#8C50A1]" /> Sourcing Email Draft</button>
       </div>
       {draftContent && activeTool && (
           <div className="bg-white border border-[#b2acce] rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
@@ -238,7 +235,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft' : 'Custom Interview Email'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
-              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
+              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce}/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
               <div className="mt-3 flex justify-end"><button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button></div>
           </div>
       )}
@@ -407,8 +404,6 @@ export default function App() {
         let score = parsedResult.matchScore;
         if (typeof score === 'string') score = parseInt(score.replace(/[^0-9]/g, ''));
         
-        // No Leaderboard update logic needed here
-        
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary, strengths: parsedResult.strengths, gaps: parsedResult.gaps, interviewQuestions: parsedResult.interviewQuestions });
         setActiveTab('resume');
       } else {
@@ -498,7 +493,6 @@ export default function App() {
                 ))}
               </div>
               <div className="p-3 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center print:hidden">
-                  {/* Removed File Upload Button entirely */}
                   <div className="flex gap-2 items-center">
                       <button onClick={handleLoadExample} className="text-xs font-medium text-[#2B81B9] hover:text-[#00c9ff] px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">Click for Example</button>
                       {(jobDescription || resume) && <button onClick={clearAll} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-1.5 hover:bg-slate-100 rounded-md transition-colors">Clear All</button>}
