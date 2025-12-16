@@ -7,10 +7,11 @@ const ENABLE_DEMO_MODE = false;
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** YOUR API KEY IS HERE FOR DEPLOYMENT (AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o) ***
-// NOTE: This key is now ONLY used in the client-side mock logic if ENABLE_DEMO_MODE=true.
+// *** YOUR API KEY IS HERE FOR LIVE DEPLOYMENT (AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o) ***
+// NOTE: This key is now ONLY used in the client-side mock logic. 
+// The real API calls rely on the serverless function proxy to securely inject the key.
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent'; // Retained only for mock purposes
 
 // --- Brand Colors ---
 const BRAND = {
@@ -247,7 +248,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
     
     return (
         <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce}/20">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
@@ -494,21 +495,22 @@ Best,
 
     // --- REAL API LOGIC ---
     try {
-        // *** USING RELATIVE PROXY PATH ***
+        // *** USING RELATIVE PROXY PATH: /api/analyze ***
         const proxyUrl = `/api/analyze`; 
         
         const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                jobDescription: jobDescription, // Pass JD and Resume to proxy
+                jobDescription: jobDescription, 
                 resume: resume,
-                prompt: prompt // Pass the prompt intended for email generation
+                prompt: prompt 
             }) 
         });
 
         const data = await response.json();
-        const text = data.text || data.analysis?.text || data.analysis?.content;
+        // Since proxy returns a structured JSON, we look for the direct text content
+        const text = data.text || data.analysis?.text || data.analysis?.content; 
         
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
