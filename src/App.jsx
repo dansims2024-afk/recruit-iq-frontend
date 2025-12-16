@@ -2,11 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// SET TO TRUE TO GUARANTEE STABILITY AND PREVENT CRASHES ON ALL HOSTS.
-// This forces the application to use Mock Data 100% of the time.
-const ENABLE_DEMO_MODE = true; 
+// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
+const ENABLE_DEMO_MODE = false; 
 
-// *** API Key and URL are now unused for functionality. ***
+const localStorageKey = 'hm_copilot_leaderboard_data'; 
+
+// *** API KEY CONFIGURATION ***
+// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
+// Your key: AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
