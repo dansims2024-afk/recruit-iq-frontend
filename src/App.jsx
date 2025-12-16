@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, Mail, LogIn, LogOut } from 'lucide-react';
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- CONFIGURATION ---
 // Set to FALSE for production deployment.
+// Note: The code below automatically uses Mock Data in the Canvas preview to prevent crashes here.
 const ENABLE_DEMO_MODE = false; 
 
-const localStorageKey = 'hm_copilot_leaderboard_data'; // Retained for utility functions only
+const localStorageKey = 'hm_copilot_leaderboard_data'; 
 
-// *** DIRECT API KEY CONFIGURATION ***
-// The API key is used here for direct client-side calls (necessary if no proxy is available).
-// WARNING: This key is exposed in the frontend code.
+// *** API Key is no longer used for direct calls and is only kept for the mock fallback logic. ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -146,7 +145,6 @@ const handleCopy = (text) => {
     }
     document.body.removeChild(textArea);
 };
-
 
 // --- Sub-Components ---
 
@@ -377,14 +375,67 @@ export default function App() {
   const generateContent = useCallback(async (toolType, prompt) => {
     setToolLoading(true); setError(null); setActiveTool(toolType);
     
+    // --- DEMO MODE CHECK FOR EMAIL GENERATION ---
+    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+        const name = extractCandidateName(resume) || "Candidate";
+        const mockInvite = `Subject: Interview Invitation: Staff Accountant at Stellar Dynamics Corp.
+
+Hi **${name}**,
+
+Thank time applying for the Staff Accountant position at Stellar Dynamics Corp. Your resume highlighted excellent experience in **General Ledger (GL) Management**, which is a key requirement for our team.
+
+We would like to invite you to a 30-minute screening interview next week to discuss your qualifications further. Please let me know your availability for a call on Tuesday or Wednesday afternoon.
+
+Best regards,
+[Hiring Manager Name]`;
+
+        const mockOutreach = `Subject: Exploring the Staff Accountant role at Stellar Dynamics Corp.
+
+Hi **${name}**,
+
+I came across your profile and was immediately impressed by your background in **Accounts Payable (AP) management** and your commitment to achieving your **CPA**.
+
+We have a key Staff Accountant role at Stellar Dynamics Corp. that aligns perfectly with your skill set, specifically your ERP exposure and GAAP knowledge.
+
+Are you open to a confidential 15-minute introductory chat next week? If so, please feel free to book time on my calendar here [Link].
+
+Best,
+[Recruiter Name]`;
+    
+        let responseText = toolType === 'invite' ? mockInvite : mockOutreach;
+        if (toolType === 'invite') setInviteDraft(responseText);
+        if (toolType === 'outreach') setOutreachDraft(responseText);
+        setToolLoading(false);
+        return;
+    }
+
+    // --- REAL API LOGIC: Using Proxy Endpoint for Email Generation (SECURE) ---
+    const proxyUrl = `/api/analyze`; 
+    
     try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({ 
+                jobDescription: jobDescription, 
+                resume: resume,
+                prompt: prompt 
+            }) 
         });
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
+        }
+
+        const data = await response.json().catch(err => {
+             throw new Error(`Failed to parse JSON response from proxy (Email Generation).`);
+        });
+        
+        const text = data.analysis; 
+        
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
             if (toolType === 'outreach') setOutreachDraft(text);
@@ -392,12 +443,9 @@ export default function App() {
             setError("AI returned an empty response for drafting.");
         }
     } catch (err) { 
-        // Fallback to mock if API fails
-        setError("Network error. Switching to mock content."); 
-        if (toolType === 'invite') setInviteDraft("Subject: Invitation to Interview\n\nDear Candidate,\n\nWe would like to invite you to an interview based on your impressive background.");
-        if (toolType === 'outreach') setOutreachDraft("Subject: Opportunity at Stellar Dynamics\n\nHi,\n\nI came across your profile and think you would be a great fit for our open Staff Accountant role.");
+        setError(`Failed to generate content: ${err.message}. Check Vercel logs.`); 
     } finally { setToolLoading(false); }
-  }, [apiKey]);
+  }, [resume, jobDescription]);
 
 
   const handleDraft = useCallback((type) => {
@@ -425,45 +473,52 @@ export default function App() {
     const extractedName = extractCandidateName(resume);
     setCandidateName(extractedName);
     
-    // --- DIRECT API LOGIC (WITH AUTOMATIC FALLBACK) ---
-    const prompt = `
-      Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter.
-      Return a valid JSON object (and ONLY the JSON object) with the following structure:
-      { 
-        "matchScore": number (0-100), 
-        "fitSummary": "string (brief assessment for hiring manager)", 
-        "strengths": ["str (top 3 matches)"], 
-        "gaps": ["str (top 3 missing requirements/red flags)"], 
-        "interviewQuestions": ["str"] 
-      }
-      
-      CRITICAL INSTRUCTION: Ensure all "interviewQuestions" are designed to elicit a quantifiable answer.
+    // --- MOCK DATA FOR FALLBACK ---
+    const mockScore = 85;
+    const mockParsedResult = {
+        matchScore: mockScore,
+        fitSummary: "MOCK DATA (API Connection Failed): Strong candidate with solid accounting foundation and relevant industry experience. Lacks direct ERP system expertise but shows strong aptitude for learning.",
+        strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
+        gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
+        interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
+    };
+    
+    // --- LIVE SITE LOGIC (Using Proxy Endpoint) ---
+    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+    const proxyUrl = `/api/analyze`;
 
-      Job Description: ${jobDescription}
-      Candidate Resume: ${resume}
-    `;
+    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+        // SYNCHRONOUS MOCK EXECUTION (to avoid Canvas crash)
+        console.log("Canvas/Demo Mode active. Displaying mock data.");
+        setAnalysis({ matchScore: mockScore, fitSummary: mockParsedResult.fitSummary, strengths: mockParsedResult.strengths, gaps: mockParsedResult.gaps, interviewQuestions: mockParsedResult.interviewQuestions, });
+        setActiveTab('resume');
+        setLoading(false); 
+        return;
+    }
 
     try {
-      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      // REAL FETCH LOGIC (Calling the Vercel Proxy)
+      const response = await fetch(proxyUrl, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            jobDescription: jobDescription,
+            resume: resume
         })
       });
       
       if (!response.ok) {
-          throw new Error(`API Error: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
       }
       
-      const data = await response.json();
-      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const data = await response.json().catch(err => {
+           throw new Error(`Failed to parse JSON response from proxy. Server returned non-JSON data.`);
+      });
       
-      if(textResult) {
-        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
-        const parsedResult = JSON.parse(cleanJson);
-        
+      const parsedResult = data.analysis; 
+
+      if(parsedResult && parsedResult.matchScore !== undefined) {
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
@@ -471,23 +526,16 @@ export default function App() {
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error("No analysis returned from AI.");
+         throw new Error(`No valid analysis object returned from proxy. Check proxy logs for AI response errors.`);
       }
     } catch (err) { 
-        console.error("API Call Failed, switching to Mock Data:", err);
-        // --- FALLBACK MOCK DATA ---
-        // This ensures the user ALWAYS sees a result, even if the API fails.
-        const mockScore = 85;
-        const mockParsedResult = {
-            matchScore: mockScore,
-            fitSummary: "MOCK DATA (API Connection Failed): Strong candidate with solid accounting foundation and relevant industry experience. Lacks direct ERP system expertise but shows strong aptitude for learning.",
-            strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
-            gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
-            interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
-        };
+        console.error(err); 
+        setError(err.message || "Failed to analyze. Check network configuration or Vercel Proxy logs."); 
         
+        // Show mock data if the API/Proxy fails to prevent blank screen
         setAnalysis({ matchScore: mockScore, fitSummary: mockParsedResult.fitSummary, strengths: mockParsedResult.strengths, gaps: mockParsedResult.gaps, interviewQuestions: mockParsedResult.interviewQuestions, });
         setActiveTab('resume');
+
     } finally { 
         setLoading(false); 
     }
