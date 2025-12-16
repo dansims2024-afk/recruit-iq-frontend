@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
-const ENABLE_DEMO_MODE = false; 
+// SET TO TRUE TO GUARANTEE STABILITY AND PREVENT CRASHES ON ALL HOSTS.
+// This forces the application to use Mock Data 100% of the time.
+const ENABLE_DEMO_MODE = true; 
 
-// *** API KEY CONFIGURATION ***
-// Using Direct API mode to bypass server proxy issues.
+// *** API Key and URL are now unused for functionality. ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -147,7 +147,7 @@ const handleCopy = (text) => {
 // --- Mock Data Object (Used for Fallback and Demo) ---
 const MOCK_ANALYSIS_DATA = {
     matchScore: 85,
-    fitSummary: "MOCK DATA (API Connection Failed): Strong candidate with solid accounting foundation and relevant industry experience. Lacks direct ERP system expertise but shows strong aptitude for learning.",
+    fitSummary: "MOCK DATA (DEMO MODE ACTIVE): This application is running in demonstration mode. Scores and analysis are simulated.",
     strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
     gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
     interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
@@ -209,7 +209,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
 };
 
 const InterviewQuestionsSection = ({ questions }) => (
-  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
+  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
     <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2"><HelpCircle size={14} className="text-[#00c9ff]" />Suggested Interview Questions</h2>
     <div className="grid grid-cols-1 gap-3">
       {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce}/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
@@ -338,63 +338,72 @@ export default function App() {
       if (type === 'outreach') setOutreachDraft(value);
   }, []);
   
-  // --- REAL API LOGIC: DIRECT CLIENT-SIDE CALL (Uses API Key) ---
-  const generateContent = useCallback(async (toolType, prompt) => {
-    setToolLoading(true); setError(null); setActiveTool(toolType);
+  // --- SYNC MOCK FUNCTION for content generation (Drafts) ---
+  const generateContentMock = useCallback((toolType, prompt) => {
+    const name = extractCandidateName(resume) || "Candidate";
+    const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
+    const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
     
-    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-        await new Promise(resolve => setTimeout(resolve, 800)); 
-        const mockResponse = toolType === 'invite' ? 
-            `Subject: Interview Invitation: Staff Accountant\n\nHi ${extractCandidateName(resume)},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.` : 
-            `Subject: Exciting Role: Staff Accountant\n\nHi ${extractCandidateName(resume)},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
-        
-        if (toolType === 'invite') setInviteDraft(mockResponse);
-        if (toolType === 'outreach') setOutreachDraft(mockResponse);
-        setToolLoading(false);
-        return;
-    }
-
-    try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-            if (toolType === 'invite') setInviteDraft(text);
-            if (toolType === 'outreach') setOutreachDraft(text);
-        } else {
-            setError("AI returned an empty response.");
-        }
-    } catch (err) { 
-        setError(`API Failed: ${err.message}. Check browser console for network details.`);
-        const mockResponse = toolType === 'invite' ? "Subject: Invitation to Interview (MOCK FALLBACK)" : "Subject: Opportunity at Stellar Dynamics (MOCK FALLBACK)";
-        if (toolType === 'invite') setInviteDraft(mockResponse);
-        if (toolType === 'outreach') setOutreachDraft(mockResponse);
-    } finally { setToolLoading(false); }
-  }, [resume, jobDescription]);
+    if (toolType === 'invite') setInviteDraft(mockInvite);
+    if (toolType === 'outreach') setOutreachDraft(mockOutreach);
+    setToolLoading(false);
+    setActiveTool(toolType);
+  }, [resume]);
 
 
-  const handleDraft = useCallback((type) => {
+  const handleDraft = useCallback(async (type) => {
       if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
       const name = extractCandidateName(resume);
       setCandidateName(name);
+
+      setToolLoading(true);
+      setError(null);
+
+      const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+
+      if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+          // If in Demo Mode, use synchronous mock
+          setTimeout(() => generateContentMock(type), 500);
+          return;
+      }
+      
+      // REAL API CALL
       const prompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate: ${name}. Task: Write a ${type === 'invite' ? 'interview invitation' : 'cold outreach'} email based on the resume below.\n\nJD: ${jobDescription}\nResume: ${resume}`;
-      generateContent(type, prompt);
-  }, [resume, jobDescription, generateContent, selectedTone]);
+      
+      try {
+          const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (text) {
+              if (type === 'invite') setInviteDraft(text);
+              if (type === 'outreach') setOutreachDraft(text);
+          } else {
+              setError("AI returned an empty response.");
+              generateContentMock(type); // Fallback to mock text
+          }
+      } catch (err) { 
+          setError(`API Failed: ${err.message}. Check network connection.`);
+          generateContentMock(type); // Fallback to mock text
+      } finally { setToolLoading(false); }
+  }, [resume, jobDescription, selectedTone]);
+
 
   // --- Core Analysis Logic (DIRECT API CALL) ---
   const handleAnalyzeAsync = async () => {
     // DIRECT API CALL TO GOOGLE GEMINI
+    const prompt = `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}`;
+    
     try {
       const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            contents: [{ parts: [{ text: `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}` }] }],
+            contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: "application/json" }
         })
       });
@@ -439,7 +448,7 @@ export default function App() {
 
     // MOCK EXECUTION FOR DEMO WINDOW
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-         console.log("Canvas detected, using mock.");
+         console.log("Demo Mode active. Setting mock data.");
          setTimeout(() => {
              setAnalysis(MOCK_ANALYSIS_DATA);
              setActiveTab('resume');
