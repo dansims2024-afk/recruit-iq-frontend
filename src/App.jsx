@@ -2,15 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail, Trash2, Zap } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
+// Set to FALSE to use the Real API when deployed.
 const ENABLE_DEMO_MODE = false; 
 
-const localStorageKey = 'hm_copilot_leaderboard_data'; 
-
 // *** API KEY CONFIGURATION ***
-// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -23,145 +20,43 @@ const BRAND = {
 
 // --- Example Data ---
 const FULL_EXAMPLE_JD = `Company: Stellar Dynamics Corp.
+Role: Staff Accountant
 Location: Phoenix, AZ
-Job Type: Full-Time, Exempt
-Reports To: Accounting Manager
-🌟 About Stellar Dynamics Corp.
-Stellar Dynamics Corp. is a rapidly growing tech startup focused on revolutionizing sustainable energy storage solutions. We are a dynamic, fast-paced organization committed to financial excellence and operational efficiency. We are seeking a detail-oriented and motivated Staff Accountant to join our Finance team and contribute to our mission of building a cleaner, brighter future.
+About: Tech startup revolutionizing energy storage.
 
-📝 Key Responsibilities
-The Staff Accountant will play a crucial role in maintaining accurate financial records and supporting the month-end close process. Key responsibilities include:
+Key Responsibilities:
+* General Ledger (GL) Management: Post journal entries, reconciliations.
+* Month-End Close: Assist in closing process, reporting.
+* AP/AR: Process invoices, monitor balances.
+* Fixed Assets: Maintain register, calculate depreciation.
+* Tax & Compliance: Assist with audits and filings.
 
-General Ledger (GL) Management:
-Prepare and post journal entries, including accruals, prepayments, and reclassifications.
-Perform monthly GL account reconciliations and analysis to ensure accuracy and resolve discrepancies.
-Month-End Close:
-Assist in the timely and accurate completion of the monthly, quarterly, and annual financial close process.
-Generate and review supporting schedules and reports for financial statements.
-Accounts Payable (AP) & Accounts Receivable (AR):
-Process vendor invoices and manage weekly payment runs.
-Assist with the invoicing of customers and monitor outstanding AR balances.
-Fixed Assets:
-Maintain the fixed asset register, including tracking additions, disposals, and calculating monthly depreciation.
-Tax & Compliance:
-Assist with documentation for external audits and compliance requirements.
-Support the preparation of sales and use tax filings.
-Ad-Hoc Projects:
-Participate in process improvement initiatives and system upgrades within the Finance department.
-🎯 Qualifications
-Required:
-Education: Bachelor's degree in Accounting, Finance, or a related field.
-Experience: 1-3 years of experience in an accounting role, preferably within a corporate setting.
-Technical Skills: Strong proficiency in Microsoft Excel (pivot tables, VLOOKUPs, etc.) and experience with a major ERP system (e.g., SAP, Oracle, or NetSuite).
-Foundational Knowledge: Solid understanding of Generally Accepted Accounting Principles (GAAP).
-Preferred:
-CPA track or desire to pursue certification.
-Experience in the technology or manufacturing industries.
-✨ Skills & Competencies
-Detail-Oriented: Exceptional attention to detail and accuracy in data entry and analysis.
-Organizational Skills: Excellent time management and ability to meet strict deadlines.
-Communication: Strong verbal and written communication skills to interact effectively with internal teams.
-Problem-Solving: Proactive approach to identifying and resolving accounting issues.
-💵 Benefits & Perks
-Competitive salary and performance-based bonus.
-Generous paid time off and paid holidays.
-Comprehensive health, dental, and vision insurance plans.
-401(k) matching program.
-Casual dress code and flexible work arrangements (e.g., hybrid schedule).
-On-site gym and complimentary snacks/beverages.`;
+Qualifications:
+* Bachelor's in Accounting/Finance.
+* 1-3 years experience.
+* Strong Excel & ERP skills (NetSuite preferred).
+* GAAP knowledge.`;
   
 const EXAMPLE_RESUME = `Soda McTasty
-(555) 123-4567 | soda.mctasty@email.com | Phoenix, AZ 85001 | https://www.google.com/search?q=linkedin.com/in/sodamctasty
+Phoenix, AZ | soda.mctasty@email.com
 
-Professional Summary
-Highly motivated and detail-oriented Junior Accountant with 1.5 years of hands-on experience in financial record maintenance, general ledger management, and supporting full-cycle accounting functions. Proven ability to execute month-end closing procedures and enhance data accuracy. Eager to leverage strong GAAP foundation and technical proficiency to contribute to a fast-paced corporate finance team. Currently studying to sit for the Certified Public Accountant (CPA) exam.
+Summary: Motivated Junior Accountant with 1.5 years experience in GL, AP/AR, and financial reporting. 
 
-Experience
-Junior Accountant
-"Desert Bloom" Event Management, Phoenix, AZJanuary 2024 – Present
+Experience:
+- Junior Accountant, Desert Bloom Events (Jan 2024–Present): Managed AP for 50+ vendors, posted 40+ monthly journal entries, assisted in month-end close.
+- Accounting Intern, Swift Financial (May 2023–Dec 2023): Supported bookkeeping, used VLOOKUPs/Pivot Tables.
 
-Managed the end-to-end Accounts Payable (AP) process for 50+ vendors, ensuring timely invoice processing, three-way matching, and managing weekly payment schedules.
-Prepared and posted 40+ routine and non-routine journal entries monthly, including accruals for operating expenses and prepaid asset amortization.
-Assisted the Accounting Manager in the month-end close process, successfully reconciling six key balance sheet accounts, including bank accounts and customer deposits.
-Maintained detailed records of property and equipment, calculating and recording monthly depreciation using the straight-line method.
-Supported external auditors by preparing organized documentation and supporting schedules for payroll liabilities and cash balances.
-Accounting Intern
-Swift Financial Consulting, Tempe, AZMay 2023 – December 2023
+Education: BS Accounting, ASU (Dec 2023). 3.8 GPA.
+Skills: QuickBooks, Excel, GAAP.`;
 
-Provided administrative and technical support for bookkeeping activities, processing 15-20 transactions daily for multiple small business clients.
-Developed intermediate proficiency in Microsoft Excel, utilizing VLOOKUP and Pivot Tables to aggregate large data sets for budget vs. actual variance analysis.
-Maintåained confidential client files and ensured adherence to data retention policies.
-Education
-Bachelor of Science in Accounting
-Arizona State University (ASU), Tempe, AZGraduation: December 2023
-
-GPA: 3.8/4.0, Cum Laude
-Relevant Coursework: Advanced Financial Accounting, Federal Taxation, Auditing, Business Ethics
-Skills & Technical Proficiency
-Accounting Software: QuickBooks Online (Advanced), Microsoft Dynamics GP (Basic exposure/training), Sage 50.
-Data Analysis: Microsoft Excel (Advanced), Microsoft Office Suite, Google Sheets.
-Knowledge: Strong understanding of U.S. GAAP, Financial Reporting, and General Ledger Reconciliation.
-Certifications: CPA Candidate (Planning to sit for the first exam section in Q2 2025).
-Awards & Recognition
-ASU Dean's List (2022, 2023)
-Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
-
-// --- Utility Functions (HOISTED TO GLOBAL SCOPE to avoid ReferenceErrors) ---
+// --- Utility Functions ---
 
 const extractCandidateName = (resumeContent) => {
     if (!resumeContent) return 'Unnamed Candidate';
     const lines = resumeContent.trim().split('\n');
     const firstLine = lines.find(line => line.trim() !== '');
     if (!firstLine) return 'Unnamed Candidate';
-    // Basic heuristic: assume the first line is the name if it's short
-    if (firstLine.length < 50 && !/[@\(\)\d]/.test(firstLine)) {
-        return firstLine.trim();
-    }
-    const nameMatch = firstLine.match(/^(\S+\s\S+)/); 
-    if (nameMatch) {
-        return nameMatch[1];
-    }
-    return firstLine.split('|')[0].trim() || 'Unnamed Candidate';
-};
-
-const hashJobDescription = (jd) => {
-    let hash = 0;
-    if (!jd || jd.length === 0) return "default";
-    for (let i = 0; i < jd.length; i++) {
-        const char = jd.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; 
-    }
-    return Math.abs(hash).toString(36);
-};
-
-const getLeaderboard = () => {
-    try {
-        const data = localStorage.getItem(localStorageKey);
-        return data ? JSON.parse(data) : {};
-    } catch (e) { return {}; }
-};
-
-const saveLeaderboard = (data) => {
-    try {
-        localStorage.setItem(localStorageKey, JSON.stringify(data));
-    } catch (e) { }
-};
-
-const updateLeaderboardUtility = (newEntry) => {
-    const allData = getLeaderboard();
-    let currentList = allData[newEntry.jdHash] || [];
-    const existingIndex = currentList.findIndex(c => c.name === newEntry.name);
-    if (existingIndex !== -1 && currentList[existingIndex].score === newEntry.score) {
-        return; 
-    }
-    if (existingIndex !== -1) {
-        currentList[existingIndex] = newEntry;
-    } else {
-        currentList.push(newEntry);
-    }
-    const updatedLeaderboard = { ...allData, [newEntry.jdHash]: currentList };
-    saveLeaderboard(updatedLeaderboard);
+    return firstLine.length < 50 ? firstLine.trim() : 'Unnamed Candidate';
 };
 
 let setCopyFeedbackGlobal = null; 
@@ -185,7 +80,7 @@ const handleCopy = (text) => {
     document.body.removeChild(textArea);
 };
 
-// --- Mock Data Object (Used for Fallback) ---
+// --- Mock Data Object (Fallback) ---
 const MOCK_ANALYSIS_DATA = {
     matchScore: 85,
     fitSummary: "MOCK DATA (Fallback): Strong candidate with solid accounting foundation. This result is shown because the API call failed or timed out.",
@@ -240,7 +135,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
           <div className="font-semibold text-[#2B81B9] flex items-center gap-1 mb-2"><ThumbsUp size={14} /> Strong Matches</div>
           {strengths.length > 0 ? ( <ul className="space-y-1">{strengths.map((s, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#00c9ff] shrink-0" />{typeof s === 'string' ? s : JSON.stringify(s)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
-        <div className="bg-[#8C50A1]/5 border border-[#8C50A1}/20 rounded-xl p-4">
+        <div className="bg-[#8C50A1]/5 border border-[#8C50A1]/20 rounded-xl p-4">
           <div className="font-semibold text-[#8C50A1] flex items-center gap-1 mb-2"><ThumbsDown size={14} /> Red Flags / Gaps</div>
           {gaps.length > 0 ? ( <ul className="space-y-1">{gaps.map((g, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#8C50A1] shrink-0" />{typeof g === 'string' ? g : JSON.stringify(g)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
@@ -253,7 +148,7 @@ const InterviewQuestionsSection = ({ questions }) => (
   <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
     <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2"><HelpCircle size={14} className="text-[#00c9ff]" />Suggested Interview Questions</h2>
     <div className="grid grid-cols-1 gap-3">
-      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce}/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
+      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce]/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
     </div>
   </div>
 );
@@ -278,7 +173,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft' : 'Custom Interview Email'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
-              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce}/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
+              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
               <div className="mt-3 flex justify-end"><button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button></div>
           </div>
       )}
@@ -322,28 +217,9 @@ export default function App() {
   const [outreachDraft, setOutreachDraft] = useState('');
   const [toolLoading, setToolLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState('professional'); 
-  const [libsLoaded, setLibsLoaded] = useState(true); // Forced true now
 
-  // --- Leaderboard/Storage Logic ---
-  // Hashed key logic is necessary for local storage leaderboard tracking
-  const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
-  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard());
-  
-  const handleClearLeaderboard = useCallback((jdHashToClear) => {
-      setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
-  }, []);
-
-  useEffect(() => {
-      const allData = getLeaderboard();
-      if (JSON.stringify(allData) !== JSON.stringify(leaderboardData)) { setLeaderboardData(allData); }
-  }, [analysis, currentJdHash]);
-  // --- End Leaderboard/Storage Logic ---
-
-
-  // --- INITIALIZATION ---
   useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
-  
-  // --- CORE CALLBACKS ---
+
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
     setInviteDraft(''); setOutreachDraft(''); 
@@ -359,97 +235,74 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
-  const processText = useCallback((text, type, fileName) => {
-      let cleanedText = text.replace(/[\uFFFD\u0000-\u001F\u007F-\u009F\u200B]/g, ' ').trim();
-      if (!cleanedText || cleanedText.length < 50) { setError(`Could not extract clean text from ${fileName}. Please copy/paste.`); setLoading(false); return; }
-      if (type === 'jd') { setJobDescription(cleanedText); setActiveTab('resume'); } 
-      else { setResume(cleanedText); setCandidateName(extractCandidateName(cleanedText)); }
-      setLoading(false);
-  }, []);
-
-  // --- Simplified File/Content Utility Functions (Only reads text/markdown) ---
+  // --- Simple File Reader (Text Only) to avoid external lib crashes ---
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true); setError(null);
     
-    // Using FileReader to read text files, avoiding complex binary parsing
     const reader = new FileReader();
     reader.onload = (event) => {
         const text = event.target.result;
-        processText(text, type, file.name);
+        if (type === 'jd') { setJobDescription(text); setActiveTab('resume'); } 
+        else { setResume(text); setCandidateName(extractCandidateName(text)); }
+        setLoading(false);
     };
     reader.onerror = () => {
         setError("Error reading file.");
         setLoading(false);
     };
-
-    // Only reading text to avoid crashing on PDF/DOCX
     reader.readAsText(file);
     e.target.value = null; 
-  }, [processText]);
+  }, []);
   
   const setDrafts = useCallback((type, value) => {
       if (type === 'invite') setInviteDraft(value);
       if (type === 'outreach') setOutreachDraft(value);
   }, []);
   
-  // --- MOCK FUNCTION for content generation (Drafts) ---
-  const generateContentMock = useCallback((toolType, prompt) => {
-    const name = extractCandidateName(resume) || "Candidate";
-    const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
-    const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
+  // --- REAL API LOGIC ---
+  const generateContent = useCallback(async (toolType, prompt) => {
+    setToolLoading(true); setError(null); setActiveTool(toolType);
     
-    if (toolType === 'invite') setInviteDraft(mockInvite);
-    if (toolType === 'outreach') setOutreachDraft(mockOutreach);
-    setToolLoading(false);
-    setActiveTool(toolType);
+    // DEMO BYPASS
+    if (ENABLE_DEMO_MODE) {
+        setTimeout(() => {
+             const mockResponse = toolType === 'invite' ? "Subject: Interview...\n\nMock invite." : "Subject: Outreach...\n\nMock outreach.";
+             if (toolType === 'invite') setInviteDraft(mockResponse);
+             if (toolType === 'outreach') setOutreachDraft(mockResponse);
+             setToolLoading(false);
+        }, 800);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+            if (toolType === 'invite') setInviteDraft(text);
+            if (toolType === 'outreach') setOutreachDraft(text);
+        } else {
+            setError("AI returned an empty response.");
+        }
+    } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
   }, [resume]);
 
 
-  const handleDraft = useCallback(async (type) => {
+  const handleDraft = useCallback((type) => {
       if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
       const name = extractCandidateName(resume);
       setCandidateName(name);
-
-      setToolLoading(true);
-      setError(null);
-
-      const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-
-      if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-          // If in Demo Mode, use synchronous mock
-          setTimeout(() => generateContentMock(type), 500);
-          return;
-      }
-      
-      // REAL API CALL
       const prompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate: ${name}. Task: Write a ${type === 'invite' ? 'interview invitation' : 'cold outreach'} email based on the resume below.\n\nJD: ${jobDescription}\nResume: ${resume}`;
-      
-      try {
-          const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-          });
-          const data = await response.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (text) {
-              if (type === 'invite') setInviteDraft(text);
-              if (type === 'outreach') setOutreachDraft(text);
-          } else {
-              setError("AI returned an empty response.");
-              generateContentMock(type); // Fallback to mock text
-          }
-      } catch (err) { 
-          setError(`API Failed: ${err.message}. Check network connection.`);
-          generateContentMock(type); // Fallback to mock text
-      } finally { setToolLoading(false); }
-  }, [resume, jobDescription, selectedTone]);
+      generateContent(type, prompt);
+  }, [resume, jobDescription, generateContent, selectedTone]);
 
-
-  // --- Core Analysis Logic (DIRECT API CALL) ---
+  // --- Core Analysis Logic ---
   const handleAnalyzeAsync = async () => {
     const prompt = `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}`;
     
@@ -476,9 +329,6 @@ export default function App() {
         let score = parsedResult.matchScore;
         if (typeof score === 'string') score = parseInt(score.replace(/[^0-9]/g, ''));
         
-        const newEntry = { jdHash: currentJdHash, name: extractCandidateName(resume), score: score, summary: parsedResult.fitSummary };
-        if (extractCandidateName(resume) !== 'Unnamed Candidate' && score > 0) { updateLeaderboardUtility(newEntry); }
-        
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary, strengths: parsedResult.strengths, gaps: parsedResult.gaps, interviewQuestions: parsedResult.interviewQuestions });
         setActiveTab('resume');
       } else {
@@ -502,34 +352,18 @@ export default function App() {
     const extractedName = extractCandidateName(resume);
     setCandidateName(extractedName);
     
+    // DEMO MODE BYPASS
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-
-    // MOCK EXECUTION FOR DEMO WINDOW
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-         console.log("Canvas detected, using mock.");
          setTimeout(() => {
-             const mockScore = 88;
-             const mockParsedResult = {
-                matchScore: mockScore,
-                fitSummary: "MOCK DATA: Strong candidate match based on keywords.",
-                strengths: ["Relevant Experience", "Technical Skills"],
-                gaps: ["Specific ERP knowledge"],
-                interviewQuestions: ["Describe your experience with month-end close."]
-            };
-             setAnalysis({ 
-                 matchScore: mockScore, 
-                 fitSummary: mockParsedResult.fitSummary, 
-                 strengths: mockParsedResult.strengths, 
-                 gaps: mockParsedResult.gaps, 
-                 interviewQuestions: mockParsedResult.interviewQuestions 
-             });
+             setAnalysis(MOCK_ANALYSIS_DATA);
              setActiveTab('resume');
              setLoading(false); 
          }, 1500); 
          return;
     }
 
-    // REAL EXECUTION FOR LIVE SITE
+    // REAL EXECUTION
     handleAnalyzeAsync(); 
   };
   
@@ -571,7 +405,7 @@ export default function App() {
                   <label className={`flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border-2 border-transparent text-[#2B81B9] text-xs font-semibold hover:border-[#00c9ff] transition-all shadow-md hover:shadow-lg`} style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderImage: 'linear-gradient(to right, #00c9ff, #2B81B9) 1' }}>
                       <Download size={14} className="text-[#00c9ff]" style={{ color: '#00c9ff' }} />
                       <span style={{ background: 'linear-gradient(to right, #00c9ff, #2B81B9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Upload File (.txt only)</span>
-                      <input type="file" className="hidden" accept=".txt, .md" onChange={(e) => handleFileUpload(e, activeTab === 'jd' ? 'jd' : 'resume')} disabled={!libsLoaded} />
+                      <input type="file" className="hidden" accept=".txt, .md" onChange={(e) => handleFileUpload(e, activeTab === 'jd' ? 'jd' : 'resume')} />
                   </label>
                   <div className="flex gap-2 items-center">
                       <button onClick={handleLoadExample} className="text-xs font-medium text-[#2B81B9] hover:text-[#00c9ff] px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">Click for Example</button>
@@ -612,7 +446,7 @@ export default function App() {
                           </h2>
                       </div>
                       <div className="flex-1 overflow-y-auto custom-scrollbar pt-3 px-2">
-                          <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(analysis.summary)} />
+                          <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(generateSummaryText())} />
                           <CommunicationTools 
                               activeTool={activeTool}
                               setActiveTool={setActiveTool}
@@ -621,9 +455,9 @@ export default function App() {
                               handleCopy={handleCopy} 
                               setDrafts={setDrafts}
                               selectedTone={selectedTone}
+                              setSelectedTone={setSelectedTone}
                               toolLoading={toolLoading}
                           />
-                          <Leaderboard jdHash={currentJdHash} currentCandidateName={candidateName} score={analysis.matchScore} onClear={handleClearLeaderboard} leaderboardData={leaderboardData} />
                           {analysis.interviewQuestions && analysis.interviewQuestions.length > 0 && <InterviewQuestionsSection questions={analysis.interviewQuestions} />}
                       </div>
                   </div>
