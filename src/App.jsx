@@ -6,7 +6,8 @@ const localStorageKey = 'hm_copilot_leaderboard_data';
 // *** API KEY CONFIGURATION ***
 // Using Direct API mode. 
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+// Switched to STABLE 1.5 Flash model to prevent hanging/spooling
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -180,6 +181,15 @@ const handleCopy = (text) => {
         console.error('Fallback copy failed:', err);
     }
     document.body.removeChild(textArea);
+};
+
+// --- Mock Data Object (Used for Fallback) ---
+const MOCK_ANALYSIS_DATA = {
+    matchScore: 85,
+    fitSummary: "MOCK DATA (Fallback): Strong candidate with solid accounting foundation. This result is shown because the API call failed or timed out.",
+    strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
+    gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
+    interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
 };
 
 // --- Sub-Components ---
@@ -357,14 +367,10 @@ export default function App() {
       setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
   }, []);
 
-  // Re-added the useEffect to load data after load (post-synchronous initialization)
   useEffect(() => {
-    // Only attempt to load leaderboard data *after* the initial sync render
-    const initialData = getLeaderboard();
-    if (initialData && Object.keys(initialData).length > 0) {
-        setLeaderboardData(initialData);
-    }
-  }, []);
+      const allData = getLeaderboard();
+      if (JSON.stringify(allData) !== JSON.stringify(leaderboardData)) { setLeaderboardData(allData); }
+  }, [analysis, currentJdHash]);
 
   useEffect(() => {
     const loadScript = (src) => {
@@ -398,7 +404,7 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
-  // --- Simplified File/Content Utility Functions (Removed actual binary parsing for space) ---
+  // --- File/Content Utility Functions ---
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -426,56 +432,34 @@ export default function App() {
     
     // --- DEMO MODE CHECK FOR EMAIL GENERATION ---
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-    if (ENABLE_DEMO_MODE) {
-        await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
-        const name = extractCandidateName(resume) || "Candidate";
-        const mockInvite = `Subject: Interview Invitation: Staff Accountant at Stellar Dynamics Corp.
-
-Hi **${name}**,
-
-Thank time applying for the Staff Accountant position at Stellar Dynamics Corp. Your resume highlighted excellent experience in **General Ledger (GL) Management**, which is a key requirement for our team.
-
-We would like to invite you to a 30-minute screening interview next week to discuss your qualifications further. Please let me know your availability for a call on Tuesday or Wednesday afternoon.
-
-Best regards,
-[Hiring Manager Name]`;
-
-        const mockOutreach = `Subject: Exploring the Staff Accountant role at Stellar Dynamics Corp.
-
-Hi **${name}**,
-
-I came across your profile and was immediately impressed by your background in **Accounts Payable (AP) management** and your commitment to achieving your **CPA**.
-
-We have a key Staff Accountant role at Stellar Dynamics Corp. that aligns perfectly with your skill set, specifically your ERP exposure and GAAP knowledge.
-
-Are you open to a confidential 15-minute introductory chat next week? If so, please feel free to book time on my calendar here [Link].
-
-Best,
-[Recruiter Name]`;
     
-        let responseText = toolType === 'invite' ? mockInvite : mockOutreach;
-        if (toolType === 'invite') setInviteDraft(responseText);
-        if (toolType === 'outreach') setOutreachDraft(responseText);
-        setToolLoading(false);
-        return;
-    }
-
-    // --- REAL API LOGIC ---
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Timeout
+
         const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
             if (toolType === 'outreach') setOutreachDraft(text);
         } else {
-            setError("AI returned an empty response for drafting.");
+            setError("AI returned an empty response.");
         }
-    } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
+    } catch (err) { 
+        setError(`Failed to generate content: ${err.message}`); 
+    } finally { setToolLoading(false); }
   }, [resume, apiKey]);
 
 
@@ -493,6 +477,9 @@ Best,
     // DIRECT API CALL TO GOOGLE GEMINI
     const prompt = `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}`;
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s Timeout
+
     try {
       const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST', 
@@ -500,8 +487,10 @@ Best,
         body: JSON.stringify({ 
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: "application/json" }
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
           const errorText = await response.text();
@@ -552,27 +541,13 @@ Best,
     const extractedName = extractCandidateName(resume);
     setCandidateName(extractedName);
     
-    // MOCK EXECUTION FOR DEMO WINDOW ONLY
-    // We check for Canvas explicitly to avoid crashing here, but allow live site to try API.
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-    if (ENABLE_DEMO_MODE) {
+
+    // MOCK EXECUTION FOR DEMO WINDOW
+    if (isCanvasEnvironment) {
          console.log("Canvas detected, using mock.");
          setTimeout(() => {
-            const mockScore = 88;
-            const mockParsedResult = {
-                matchScore: mockScore,
-                fitSummary: "MOCK DATA: Strong candidate match based on keywords.",
-                strengths: ["Relevant Experience", "Technical Skills"],
-                gaps: ["Specific ERP knowledge"],
-                interviewQuestions: ["Describe your experience with month-end close."]
-            };
-             setAnalysis({ 
-                 matchScore: mockScore, 
-                 fitSummary: mockParsedResult.fitSummary, 
-                 strengths: mockParsedResult.strengths, 
-                 gaps: mockParsedResult.gaps, 
-                 interviewQuestions: mockParsedResult.interviewQuestions 
-             });
+             setAnalysis(MOCK_ANALYSIS_DATA);
              setActiveTab('resume');
              setLoading(false); 
          }, 1500); 
