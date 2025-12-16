@@ -2,14 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
 // --- MANUAL CONFIGURATION ---
-// KEEP THIS set to TRUE to test in the Canvas/Demo window without crashing.
-// Set to FALSE only when deploying to a live server to use the Real API.
-const ENABLE_DEMO_MODE = true; 
+// SET TO FALSE TO USE YOUR LIVE API KEY ON DEPLOYMENT
+const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** WARNING: DO NOT PASTE YOUR API KEY HERE. USE YOUR HOSTING SERVICE'S ENVIRONMENT VARIABLES. ***
-const apiKey = ""; 
+// *** YOUR API KEY IS HERE FOR DEPLOYMENT (AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o) ***
+const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
@@ -457,7 +456,8 @@ export default function App() {
     setToolLoading(true); setError(null); setActiveTool(toolType);
     
     // --- DEMO MODE CHECK FOR EMAIL GENERATION ---
-    if (ENABLE_DEMO_MODE || (window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:'))) {
+    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
         await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
         const name = extractCandidateName(resume) || "Candidate";
         const mockInvite = `Subject: Interview Invitation: Staff Accountant at Stellar Dynamics Corp.
