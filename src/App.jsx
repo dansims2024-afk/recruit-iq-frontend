@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail, Trash2, Zap } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// *** CRITICAL FIX: SET TO TRUE TO GUARANTEE APPLICATION STABILITY AND PREVENT CRASHES. ***
-const ENABLE_DEMO_MODE = true; 
+// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
+const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data'; 
 
 // *** API KEY CONFIGURATION ***
-// This key is now ONLY used to display in the console if debugging, and is otherwise ignored.
+// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -122,6 +122,46 @@ const extractCandidateName = (resumeContent) => {
         return nameMatch[1];
     }
     return firstLine.split('|')[0].trim() || 'Unnamed Candidate';
+};
+
+const hashJobDescription = (jd) => {
+    let hash = 0;
+    if (!jd || jd.length === 0) return "default";
+    for (let i = 0; i < jd.length; i++) {
+        const char = jd.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; 
+    }
+    return Math.abs(hash).toString(36);
+};
+
+const getLeaderboard = () => {
+    try {
+        const data = localStorage.getItem(localStorageKey);
+        return data ? JSON.parse(data) : {};
+    } catch (e) { return {}; }
+};
+
+const saveLeaderboard = (data) => {
+    try {
+        localStorage.setItem(localStorageKey, JSON.stringify(data));
+    } catch (e) { }
+};
+
+const updateLeaderboardUtility = (newEntry) => {
+    const allData = getLeaderboard();
+    let currentList = allData[newEntry.jdHash] || [];
+    const existingIndex = currentList.findIndex(c => c.name === newEntry.name);
+    if (existingIndex !== -1 && currentList[existingIndex].score === newEntry.score) {
+        return; 
+    }
+    if (existingIndex !== -1) {
+        currentList[existingIndex] = newEntry;
+    } else {
+        currentList.push(newEntry);
+    }
+    const updatedLeaderboard = { ...allData, [newEntry.jdHash]: currentList };
+    saveLeaderboard(updatedLeaderboard);
 };
 
 let setCopyFeedbackGlobal = null; 
@@ -246,15 +286,15 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
 );
 
 const AppSummary = () => (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
         <p className="text-sm text-slate-600 mb-4">Recruit-IQ uses the Gemini API to instantly screen candidate resumes against your specific job requirements, providing a quantified **Match Score** and actionable insights.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <FileText size={16} className="text-[#2B81B9] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 1: Input Job and Resume</span><p className="text-slate-500 mt-0.5">Paste the Job Description (JD) and the Candidate's Resume below.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis.</p></div>
             </div>
@@ -300,17 +340,15 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
-  // --- Simple File Reader (Text Only) to avoid external lib crashes ---
+  // --- File/Content Utility Functions (Manual Paste Only) ---
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true); setError(null);
     
-    // Using FileReader to read text files, avoiding complex binary parsing
     const reader = new FileReader();
     reader.onload = (event) => {
         const text = event.target.result;
-        // Directly update state without intermediate processing function
         if (type === 'jd') { setJobDescription(text); setActiveTab('resume'); } 
         else { setResume(text); setCandidateName(extractCandidateName(text)); }
         setLoading(false);
@@ -319,8 +357,6 @@ export default function App() {
         setError("Error reading file.");
         setLoading(false);
     };
-
-    // Only reading text to avoid crashing on PDF/DOCX
     reader.readAsText(file);
     e.target.value = null; 
   }, []);
@@ -354,7 +390,6 @@ export default function App() {
       const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
       if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-          // If in Demo Mode, use synchronous mock
           setTimeout(() => generateContentMock(type), 500);
           return;
       }
@@ -411,8 +446,6 @@ export default function App() {
         const parsedResult = JSON.parse(textResult);
         let score = parsedResult.matchScore;
         if (typeof score === 'string') score = parseInt(score.replace(/[^0-9]/g, ''));
-        
-        // No Leaderboard update logic needed here
         
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary, strengths: parsedResult.strengths, gaps: parsedResult.gaps, interviewQuestions: parsedResult.interviewQuestions });
         setActiveTab('resume');
