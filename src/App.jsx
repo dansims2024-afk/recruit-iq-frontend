@@ -1,15 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail } from 'lucide-react';
-
-// --- CONFIGURATION ---
-// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
-const ENABLE_DEMO_MODE = false; 
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail, Key } from 'lucide-react';
 
 const localStorageKey = 'hm_copilot_leaderboard_data'; 
-
-// *** API KEY CONFIGURATION ***
-// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
-const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
@@ -146,10 +138,10 @@ const handleCopy = (text) => {
     document.body.removeChild(textArea);
 };
 
-// --- Mock Data Object (Used for Fallback and Demo) ---
+// --- Mock Data Object (Used for Fallback) ---
 const MOCK_ANALYSIS_DATA = {
     matchScore: 85,
-    fitSummary: "MOCK DATA (DEMO MODE ACTIVE): This application is running in demonstration mode. Scores and analysis are simulated.",
+    fitSummary: "MOCK DATA (Fallback): Strong candidate with solid accounting foundation. This result is shown because the API call failed or no key was provided.",
     strengths: ["1. Strong 1.5 years experience in GL and AP.", "2. Advanced Excel proficiency confirmed.", "3. Currently pursuing CPA."],
     gaps: ["1. Limited exposure to SAP/Oracle/NetSuite ERP.", "2. No direct experience cited for sales and use tax filing.", "3. Resume contained a possible spelling error ('Maintåained')."],
     interviewQuestions: ["Q1. Describe a time you streamlined a month-end close task; quantify the time saved.", "Q2. Provide a specific example of an AR discrepancy you resolved and the impact.", "Q3. What specific features or functions of NetSuite would you prioritize learning first?"],
@@ -187,7 +179,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
   const colorClass = isHighFit ? 'from-[#00c9ff] to-[#2B81B9]' : score >= 50 ? 'from-[#8C50A1] to-[#52438E]' : 'from-red-500 to-red-700';
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
       <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2"><Percent size={14} className="text-[#00c9ff]" />Candidate Scorecard</div>
         <button onClick={onCopySummary} disabled={!analysis.matchScore} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 disabled:opacity-50 transition-colors print:hidden"><Copy size={12} /> Copy Summary</button>
@@ -201,7 +193,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
           <div className="font-semibold text-[#2B81B9] flex items-center gap-1 mb-2"><ThumbsUp size={14} /> Strong Matches</div>
           {strengths.length > 0 ? ( <ul className="space-y-1">{strengths.map((s, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#00c9ff] shrink-0" />{typeof s === 'string' ? s : JSON.stringify(s)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
-        <div className="bg-[#8C50A1}/5 border border-[#8C50A1}/20 rounded-xl p-4">
+        <div className="bg-[#8C50A1]/5 border border-[#8C50A1]/20 rounded-xl p-4">
           <div className="font-semibold text-[#8C50A1] flex items-center gap-1 mb-2"><ThumbsDown size={14} /> Red Flags / Gaps</div>
           {gaps.length > 0 ? ( <ul className="space-y-1">{gaps.map((g, i) => ( <li key={i} className="text-slate-600 text-xs flex items-start gap-1.5"><span className="mt-1 w-1 h-1 rounded-full bg-[#8C50A1] shrink-0" />{typeof g === 'string' ? g : JSON.stringify(g)}</li>))}</ul> ) : <p className="text-xs text-slate-500 italic">None identified.</p>}
         </div>
@@ -211,16 +203,16 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
 };
 
 const InterviewQuestionsSection = ({ questions }) => (
-  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+  <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
     <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2"><HelpCircle size={14} className="text-[#00c9ff]" />Suggested Interview Questions</h2>
     <div className="grid grid-cols-1 gap-3">
-      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce}/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
+      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce]/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
     </div>
   </div>
 );
 
 const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDraft, handleCopy, setDrafts, selectedTone, setSelectedTone, toolLoading }) => (
-  <div className="bg-[#f0e4f5] rounded-2xl shadow-md border border-[#8C50A1}/50 p-6">
+  <div className="bg-[#f0e4f5] rounded-2xl shadow-md border border-[#8C50A1]/50 p-6">
       <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><MessageCircle size={16} className="text-[#52438E]" /> Manager Actions</h4>
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
@@ -239,7 +231,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft' : 'Custom Interview Email'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
-              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce}/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
+              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
               <div className="mt-3 flex justify-end"><button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button></div>
           </div>
       )}
@@ -247,19 +239,19 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
 );
 
 const AppSummary = () => (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
         <h2 className="text-lg font-bold text-[#52438E] mb-2 flex items-center gap-2"><Sparkles size={18} className="text-[#00c9ff]" /> Recruit-IQ: Candidate Match Analyzer</h2>
         <p className="text-sm text-slate-600 mb-4">Recruit-IQ uses the Gemini API to instantly screen candidate resumes against your specific job requirements, providing a quantified **Match Score** and actionable insights.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <FileText size={16} className="text-[#2B81B9] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 1: Input Job and Resume</span><p className="text-slate-500 mt-0.5">Paste or upload the Job Description (JD) and the Candidate's Resume on the left.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <Search size={16} className="text-[#8C50A1] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 2: Screen Candidate</span><p className="text-slate-500 mt-0.5">Click the 'Screen Candidate' button to initiate the AI analysis.</p></div>
             </div>
-            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce}/30">
+            <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-[#b2acce]/30">
                 <Percent size={16} className="text-[#00c9ff] flex-shrink-0 mt-0.5" />
                 <div><span className="font-bold">Step 3: Review Results</span><p className="text-slate-500 mt-0.5">Instantly receive a Match Score, Strengths, Gaps, and tailored Interview Questions.</p></div>
             </div>
@@ -277,6 +269,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copyFeedback, setCopyFeedback] = useState(null);
+  const [userApiKey, setUserApiKey] = useState("AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"); // Hardcoded for BYOK mode
   
   const [activeTool, setActiveTool] = useState(null);
   const [inviteDraft, setInviteDraft] = useState('');
@@ -295,10 +288,10 @@ export default function App() {
       });
     };
     Promise.all([
-      // Only mock reading files is used, but keep these if file upload features are desired later
-      // loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'),
-      // loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js')
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'),
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js')
     ]).then(() => {
+      if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
       setLibsLoaded(true);
     }).catch(err => console.error("Failed to load file parsing libs", err));
   }, []);
@@ -318,82 +311,109 @@ export default function App() {
     setActiveTool(null);
   }, []); 
 
-  // --- Simplified File/Content Utility Functions (Removed actual binary parsing for space) ---
+  const readPdf = async (arrayBuffer) => { 
+      if (window.pdfjsLib) {
+          const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let text = "";
+          for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const content = await page.getTextContent();
+              const strings = content.items.map(item => item.str);
+              text += strings.join(" ") + "\n";
+          }
+          return text;
+      }
+      return "PDF content extracted.";
+  };
+  const readDocx = async (arrayBuffer) => { 
+      if (window.mammoth) {
+          const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+          return result.value;
+      }
+      return "DOCX content extracted."; 
+  };
+  
+  const processText = useCallback((text, type, fileName) => {
+      let cleanedText = text.replace(/[\uFFFD\u0000-\u001F\u007F-\u009F\u200B]/g, ' ').trim();
+      if (!cleanedText || cleanedText.length < 50) { setError(`Could not extract clean text from ${fileName}. Please copy/paste.`); setLoading(false); return; }
+      if (type === 'jd') { setJobDescription(cleanedText); setActiveTab('resume'); } 
+      else { setResume(cleanedText); setCandidateName(extractCandidateName(cleanedText)); }
+      setLoading(false);
+  }, []);
+
   const handleFileUpload = useCallback(async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true); setError(null);
-    
-    // Simulate loading, then set basic text
-    setTimeout(() => {
-        const mockText = type === 'jd' ? FULL_EXAMPLE_JD : EXAMPLE_RESUME;
-        if (type === 'jd') { setJobDescription(mockText); setActiveTab('resume'); } 
-        else { setResume(mockText); setCandidateName(extractCandidateName(mockText)); }
-        setLoading(false);
-    }, 500);
-
-    e.target.value = null; // Clear file input
-  }, []);
+    const isBinaryFile = file.type.includes('pdf') || file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc');
+    if (isBinaryFile && !libsLoaded) { setError("File parsers are still loading. Please wait a moment and try again."); setLoading(false); e.target.value = null; return; }
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        let text = ""; const fileType = file.type;
+        try {
+            if (isBinaryFile) {
+                if (fileType.includes("pdf")) { text = await readPdf(event.target.result); } 
+                else if (fileType.includes("wordprocessingml.document") || file.name.endsWith('.docx')) { text = await readDocx(event.target.result); } 
+                else { text = event.target.result; } 
+            } else { 
+                text = event.target.result; 
+            }
+            processText(text, type, file.name);
+        } catch (err) { console.error("File parsing error:", err); setError(`Error reading ${file.name}. Please copy text manually.`); setLoading(false); }
+    };
+    if (isBinaryFile || file.type.includes('octet-stream')) { reader.readAsArrayBuffer(file); } 
+    else { reader.readAsText(file); }
+    e.target.value = null;
+  }, [libsLoaded, processText]);
   
   const setDrafts = useCallback((type, value) => {
       if (type === 'invite') setInviteDraft(value);
       if (type === 'outreach') setOutreachDraft(value);
   }, []);
   
-  // --- MOCK FUNCTION for content generation (Drafts) ---
-  const generateContentMock = useCallback((toolType, prompt) => {
-    const name = extractCandidateName(resume) || "Candidate";
-    const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
-    const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
+  // --- REAL API LOGIC: DIRECT CLIENT-SIDE CALL (Uses provided API Key) ---
+  const generateContent = useCallback(async (toolType, prompt) => {
+    setToolLoading(true); setError(null); setActiveTool(toolType);
     
-    if (toolType === 'invite') setInviteDraft(mockInvite);
-    if (toolType === 'outreach') setOutreachDraft(mockOutreach);
-    setToolLoading(false);
-    setActiveTool(toolType);
-  }, [resume]);
+    // --- DEMO MODE CHECK ---
+    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+    if (isCanvasEnvironment) {
+         // Force mock if in Canvas to prevent crash
+         setTimeout(() => {
+             const mockResponse = toolType === 'invite' ? "Subject: Interview...\n\nMock invite body." : "Subject: Outreach...\n\nMock outreach body.";
+             if (toolType === 'invite') setInviteDraft(mockResponse);
+             if (toolType === 'outreach') setOutreachDraft(mockResponse);
+             setToolLoading(false);
+         }, 800);
+         return;
+    }
 
+    try {
+        if (!userApiKey) throw new Error("API Key is missing.");
 
-  const handleDraft = useCallback(async (type) => {
+        const response = await fetch(`${GEMINI_API_URL}?key=${userApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+            if (toolType === 'invite') setInviteDraft(text);
+            if (toolType === 'outreach') setOutreachDraft(text);
+        } else {
+            setError("AI returned an empty response.");
+        }
+    } catch (err) { setError(`Failed to generate: ${err.message}`); } finally { setToolLoading(false); }
+  }, [resume, userApiKey]);
+
+  const handleDraft = useCallback((type) => {
       if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
       const name = extractCandidateName(resume);
       setCandidateName(name);
-
-      setToolLoading(true);
-      setError(null);
-
-      const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-
-      if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-          // If in Demo Mode, use synchronous mock
-          setTimeout(() => generateContentMock(type), 500);
-          return;
-      }
-      
-      // REAL API CALL
       const prompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate: ${name}. Task: Write a ${type === 'invite' ? 'interview invitation' : 'cold outreach'} email based on the resume below.\n\nJD: ${jobDescription}\nResume: ${resume}`;
-      
-      try {
-          const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-          });
-          const data = await response.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (text) {
-              if (type === 'invite') setInviteDraft(text);
-              if (type === 'outreach') setOutreachDraft(text);
-          } else {
-              setError("AI returned an empty response.");
-              generateContentMock(type); // Fallback to mock text
-          }
-      } catch (err) { 
-          setError(`API Failed: ${err.message}. Check network connection.`);
-          generateContentMock(type); // Fallback to mock text
-      } finally { setToolLoading(false); }
-  }, [resume, jobDescription, selectedTone]);
-
+      generateContent(type, prompt);
+  }, [resume, jobDescription, generateContent, selectedTone]);
 
   // --- Core Analysis Logic (DIRECT API CALL) ---
   const handleAnalyzeAsync = async () => {
@@ -401,7 +421,9 @@ export default function App() {
     const prompt = `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}`;
     
     try {
-      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      if (!userApiKey) throw new Error("API Key is missing. Please check configuration.");
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${userApiKey}`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
@@ -429,11 +451,11 @@ export default function App() {
          throw new Error("No valid analysis returned.");
       }
     } catch (err) { 
-        console.error("API Call Failed, showing Mock Data:", err); 
-        // --- FALLBACK MOCK DATA SET ---
+        console.error("API Call Failed:", err); 
+        // Force fallback if live API fails
         setAnalysis(MOCK_ANALYSIS_DATA);
         setActiveTab('resume');
-        setError(err.message || "Failed to analyze. API Blocked (CORS/Key Issue). Showing Mock Data.");
+        setError(`API Failed (${err.message}). Showing Mock Data.`);
     } finally { 
         setLoading(false); 
     }
@@ -446,12 +468,10 @@ export default function App() {
     const extractedName = extractCandidateName(resume);
     setCandidateName(extractedName);
     
+    // Canvas check: prevent crash in demo window
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-
-    // --- FINAL SIMPLIFIED EXECUTION LOGIC ---
-    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
-         // Force mock data synchronously in the demo environment
-         console.log("Demo Mode active. Setting mock data.");
+    if (isCanvasEnvironment) {
+         console.log("Canvas detected, using mock.");
          setTimeout(() => {
              setAnalysis(MOCK_ANALYSIS_DATA);
              setActiveTab('resume');
@@ -477,7 +497,18 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2"><Logo /><h1 className="font-bold text-xl tracking-tight text-slate-800">Core Creativity<span className="text-[#2B81B9]">AI</span></h1></div>
           <div className="flex items-center gap-4">
-              <div className="text-sm font-medium bg-[#52438E] text-white px-3 py-1 rounded-full shadow-sm hidden sm:block">Recruit-IQ / Candidate Match Analyzer</div>
+              <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Key size={14} className="text-slate-400" />
+                  </div>
+                  <input 
+                    type="password" 
+                    value={userApiKey} 
+                    onChange={(e) => setUserApiKey(e.target.value)}
+                    placeholder="Enter Google API Key"
+                    className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs w-48 focus:outline-none focus:ring-1 focus:ring-[#2B81B9]"
+                  />
+              </div>
           </div>
         </div>
       </header>
@@ -543,7 +574,7 @@ export default function App() {
                           </h2>
                       </div>
                       <div className="flex-1 overflow-y-auto custom-scrollbar pt-3 px-2">
-                          <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(analysis.summary)} />
+                          <MatchScoreCard analysis={analysis} onCopySummary={() => handleCopy(generateSummaryText())} />
                           <CommunicationTools 
                               activeTool={activeTool}
                               setActiveTool={setActiveTool}
