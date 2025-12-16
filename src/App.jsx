@@ -3,15 +3,12 @@ import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, 
 
 // --- MANUAL CONFIGURATION ---
 // Set to FALSE for production deployment.
-// Note: The code below automatically uses Mock Data in the Canvas preview to prevent crashes here.
 const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** API Key and URL are now ONLY used for the MOCK logic if ENABLE_DEMO_MODE is TRUE,
-//     or if the Canvas fails the environment check. ***
+// *** API Key is retained for mock purposes only, but should be managed by the server proxy. ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
 // --- Brand Colors ---
 const BRAND = {
@@ -507,6 +504,7 @@ Best,
     const proxyUrl = `/api/analyze`; 
     
     try {
+        // We send the entire payload (including prompt) to the proxy
         const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -526,7 +524,7 @@ Best,
              throw new Error(`Failed to parse JSON response from proxy (Email Generation).`);
         });
         
-        // Proxy returns the direct text from the AI
+        // Proxy returns the direct text from the AI (under the 'analysis' key)
         const text = data.analysis; 
         
         if (text) {
@@ -536,7 +534,7 @@ Best,
             setError("AI returned an empty response for drafting.");
         }
     } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
-  }, [resume, apiKey]);
+  }, [resume, apiKey, jobDescription]);
 
 
   const handleDraft = useCallback((type) => {
