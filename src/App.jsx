@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail, Trash2, Zap } from 'lucide-react';
 
-const localStorageKey = 'hm_copilot_leaderboard_data';
-
 // --- CONFIGURATION ---
 // SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
 const ENABLE_DEMO_MODE = false; 
+
+const localStorageKey = 'hm_copilot_leaderboard_data'; 
 
 // *** API KEY CONFIGURATION ***
 // WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
@@ -106,7 +106,7 @@ Awards & Recognition
 ASU Dean's List (2022, 2023)
 Recipient of the "Emerging Leader" internal award at Desert Bloom (Q3 2024)`;
 
-// --- Utility Functions ---
+// --- Utility Functions (MUST BE OUTSIDE APP COMPONENT) ---
 
 const extractCandidateName = (resumeContent) => {
     if (!resumeContent) return 'Unnamed Candidate';
@@ -134,6 +134,8 @@ const hashJobDescription = (jd) => {
     }
     return Math.abs(hash).toString(36);
 };
+// --- End Utility Functions ---
+
 
 const getLeaderboard = () => {
     try {
@@ -227,7 +229,7 @@ const MatchScoreCard = ({ analysis, onCopySummary }) => {
   const colorClass = isHighFit ? 'from-[#00c9ff] to-[#2B81B9]' : score >= 50 ? 'from-[#8C50A1] to-[#52438E]' : 'from-red-500 to-red-700';
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce}/50 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
       <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2"><Percent size={14} className="text-[#00c9ff]" />Candidate Scorecard</div>
         <button onClick={onCopySummary} disabled={!analysis.matchScore} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 disabled:opacity-50 transition-colors print:hidden"><Copy size={12} /> Copy Summary</button>
@@ -254,7 +256,7 @@ const InterviewQuestionsSection = ({ questions }) => (
   <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 p-6 mb-6">
     <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] mb-4 flex items-center gap-2"><HelpCircle size={14} className="text-[#00c9ff]" />Suggested Interview Questions</h2>
     <div className="grid grid-cols-1 gap-3">
-      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce]/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
+      {questions && questions.length > 0 ? ( questions.map((q, i) => ( <div key={i} className="flex items-start bg-slate-50 border border-[#b2acce}/30 rounded-xl p-4 hover:bg-[#00c9ff]/5 transition-colors"><div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#2B81B9]/10 text-[#2B81B9] flex items-center justify-center text-xs font-bold mr-3 mt-0.5">Q{i + 1}</div><div className="text-sm text-slate-700 font-medium leading-relaxed">{q}</div></div> )) ) : ( <p className="text-sm text-slate-500 italic">No questions generated.</p> )}
     </div>
   </div>
 );
@@ -265,7 +267,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
       <div className="flex items-center gap-2 mb-4">
           <span className="text-xs font-medium text-slate-500">Tone:</span>
           {['professional', 'casual', 'direct'].map(tone => (
-              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce]/20'}`}>{tone}</button>
+              <button key={tone} onClick={() => setSelectedTone(tone)} className={`px-3 py-1 text-xs font-medium rounded-md capitalize ${selectedTone === tone ? 'bg-[#52438E] text-white' : 'text-slate-500 hover:bg-[#b2acce}/20'}`}>{tone}</button>
           ))}
       </div>
       {toolLoading && ( <div className="text-sm text-slate-500 flex items-center gap-2 justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-[#2B81B9]" /> Generating Draft...</div> )}
@@ -279,7 +281,7 @@ const CommunicationTools = ({ activeTool, setActiveTool, draftContent, handleDra
                   <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Draft Preview ({activeTool === 'outreach' ? 'Sourcing Email Draft' : 'Custom Interview Email'})</span>
                   <button onClick={() => setActiveTool(null)}><X size={14} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
-              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce]/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
+              <textarea value={draftContent} onChange={(e) => setDrafts(activeTool, e.target.value)} className="w-full h-48 text-sm bg-transparent border border-[#b2acce}/50 p-3 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#2B81B9] text-slate-700" />
               <div className="mt-3 flex justify-end"><button onClick={() => handleCopy(draftContent)} className="px-3 py-1.5 bg-slate-50 border border-[#b2acce] rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#00c9ff]/10 text-[#2B81B9]"><Copy size={12} /> Copy to Clipboard</button></div>
           </div>
       )}
@@ -323,14 +325,12 @@ export default function App() {
   const [outreachDraft, setOutreachDraft] = useState('');
   const [toolLoading, setToolLoading] = useState(false);
   const [selectedTone, setSelectedTone] = useState('professional'); 
-  const [libsLoaded, setLibsLoaded] = useState(false);
-  
-  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard());
+  const [libsLoaded, setLibsLoaded] = useState(true); // Forced true now
 
-  // --- EFFECT AND SESSION LOGIC ---
-  useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
-
+  // --- Leaderboard/Storage Logic ---
+  // Hashed key logic is necessary for local storage leaderboard tracking
   const currentJdHash = useMemo(() => hashJobDescription(jobDescription), [jobDescription]);
+  const [leaderboardData, setLeaderboardData] = useState(getLeaderboard());
   
   const handleClearLeaderboard = useCallback((jdHashToClear) => {
       setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
@@ -340,12 +340,12 @@ export default function App() {
       const allData = getLeaderboard();
       if (JSON.stringify(allData) !== JSON.stringify(leaderboardData)) { setLeaderboardData(allData); }
   }, [analysis, currentJdHash]);
+  // --- End Leaderboard/Storage Logic ---
 
-  useEffect(() => {
-    // NOTE: Removed external library loading logic to prevent ReferenceErrors
-    setLibsLoaded(true); 
-  }, []);
 
+  // --- INITIALIZATION ---
+  useEffect(() => { setCopyFeedbackGlobal = setCopyFeedback; }, []);
+  
   // --- CORE CALLBACKS ---
   const clearAll = useCallback(() => {
     setJobDescription(''); setResume(''); setAnalysis(null); 
@@ -397,48 +397,60 @@ export default function App() {
       if (type === 'outreach') setOutreachDraft(value);
   }, []);
   
-  // --- REAL API LOGIC: DIRECT CLIENT-SIDE CALL (Uses provided API Key) ---
-  const generateContent = useCallback(async (toolType, prompt) => {
-    setToolLoading(true); setError(null); setActiveTool(toolType);
+  // --- MOCK FUNCTION for content generation (Drafts) ---
+  const generateContentMock = useCallback((toolType, prompt) => {
+    const name = extractCandidateName(resume) || "Candidate";
+    const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
+    const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
     
-    const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
-    if (isCanvasEnvironment) {
-        await new Promise(resolve => setTimeout(resolve, 800)); 
-        const name = extractCandidateName(resume) || "Candidate";
-        const mockInvite = `Subject: Interview Invitation: Staff Accountant\n\nHi ${name},\n\nThank you for applying. We were impressed by your background in GL Management. Please choose a time to interview.`;
-        const mockOutreach = `Subject: Exciting Role: Staff Accountant\n\nHi ${name},\n\nI saw your CPA candidate status and wanted to connect about our role. Are you open to a chat?`;
-        
-        if (toolType === 'invite') setInviteDraft(mockInvite);
-        if (toolType === 'outreach') setOutreachDraft(mockOutreach);
-        setToolLoading(false);
-        return;
-    }
-
-    try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-            if (toolType === 'invite') setInviteDraft(text);
-            if (toolType === 'outreach') setOutreachDraft(text);
-        } else {
-            setError("AI returned an empty response.");
-        }
-    } catch (err) { setError(`Failed to generate content: ${err.message}`); } finally { setToolLoading(false); }
+    if (toolType === 'invite') setInviteDraft(mockInvite);
+    if (toolType === 'outreach') setOutreachDraft(mockOutreach);
+    setToolLoading(false);
+    setActiveTool(toolType);
   }, [resume]);
 
 
-  const handleDraft = useCallback((type) => {
+  const handleDraft = useCallback(async (type) => {
       if (!resume.trim() || !jobDescription.trim()) { setError("Please fill in both a JD and Resume."); return; }
       const name = extractCandidateName(resume);
       setCandidateName(name);
+
+      setToolLoading(true);
+      setError(null);
+
+      const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
+
+      if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
+          // If in Demo Mode, use synchronous mock
+          setTimeout(() => generateContentMock(type), 500);
+          return;
+      }
+      
+      // REAL API CALL
       const prompt = `Act as a Hiring Manager. Tone: ${selectedTone}. Candidate: ${name}. Task: Write a ${type === 'invite' ? 'interview invitation' : 'cold outreach'} email based on the resume below.\n\nJD: ${jobDescription}\nResume: ${resume}`;
-      generateContent(type, prompt);
-  }, [resume, jobDescription, generateContent, selectedTone]);
+      
+      try {
+          const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (text) {
+              if (type === 'invite') setInviteDraft(text);
+              if (type === 'outreach') setOutreachDraft(text);
+          } else {
+              setError("AI returned an empty response.");
+              generateContentMock(type); // Fallback to mock text
+          }
+      } catch (err) { 
+          setError(`API Failed: ${err.message}. Check network connection.`);
+          generateContentMock(type); // Fallback to mock text
+      } finally { setToolLoading(false); }
+  }, [resume, jobDescription, selectedTone]);
+
 
   // --- Core Analysis Logic (DIRECT API CALL) ---
   const handleAnalyzeAsync = async () => {
@@ -496,7 +508,7 @@ export default function App() {
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
     // MOCK EXECUTION FOR DEMO WINDOW
-    if (isCanvasEnvironment) {
+    if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          console.log("Canvas detected, using mock.");
          setTimeout(() => {
              const mockScore = 88;
