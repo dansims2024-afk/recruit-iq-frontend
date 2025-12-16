@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, Trash2, Zap, Mail } from 'lucide-react';
+import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Trash2, Zap, Mail, LogIn, LogOut } from 'lucide-react';
 
-// --- CONFIGURATION ---
-// Set to TRUE to test in the Canvas/Demo window without crashing.
-// Set to FALSE only when deploying to a live server to use the Real API.
-const ENABLE_DEMO_MODE = true; 
+// --- MANUAL CONFIGURATION ---
+// Set to FALSE for production deployment.
+// Note: The code below automatically uses Mock Data in the Canvas preview to prevent crashes here.
+const ENABLE_DEMO_MODE = false; 
 
 const localStorageKey = 'hm_copilot_leaderboard_data';
 
-// *** PASTE YOUR API KEY HERE FOR LIVE DEPLOYMENT ***
+// *** API Key and URL are now ONLY used for the MOCK logic if ENABLE_DEMO_MODE is TRUE,
+//     or if the Canvas fails the environment check. ***
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -247,7 +248,7 @@ const Leaderboard = ({ jdHash, currentCandidateName, score, onClear, leaderboard
     
     return (
         <div className="bg-white rounded-2xl shadow-md border border-[#b2acce]/50 mb-6">
-            <div className="flex justify-between items-center p-4 border-b border-[#b2acce]/20">
+            <div className="flex justify-between items-center p-4 border-b border-[#b2acce}/20">
                 <h2 className="text-xs uppercase tracking-wider font-bold text-[#52438E] flex items-center gap-2"><UserPlus size={14} className="text-[#2B81B9]" />Candidate Leaderboard ({sortedList.length} tracked)</h2>
                 <button onClick={handleDeleteLeaderboard} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium p-1 rounded-md hover:bg-red-50 transition-colors" title="Clear leaderboard for this JD"><Trash2 size={12} /> Clear</button>
             </div>
@@ -361,11 +362,13 @@ export default function App() {
       setLeaderboardData(prev => { const newLeaderboard = { ...prev }; delete newLeaderboard[jdHashToClear]; saveLeaderboard(newLeaderboard); return newLeaderboard; });
   }, []);
 
+  // Re-added the useEffect to load data after load (post-synchronous initialization)
   useEffect(() => {
-      const initialData = getLeaderboard();
-      if (initialData && Object.keys(initialData).length > 0) {
-          setLeaderboardData(initialData);
-      }
+    // Only attempt to load leaderboard data *after* the initial sync render
+    const initialData = getLeaderboard();
+    if (initialData && Object.keys(initialData).length > 0) {
+        setLeaderboardData(initialData);
+    }
   }, []);
 
   useEffect(() => {
@@ -500,15 +503,32 @@ Best,
         return;
     }
 
-    // --- REAL API LOGIC ---
+    // --- REAL API LOGIC: Using Proxy Endpoint for Email Generation ---
+    const proxyUrl = `/api/analyze`; 
+    
     try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({ 
+                jobDescription: jobDescription, 
+                resume: resume,
+                prompt: prompt 
+            }) 
         });
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
+        }
+
+        const data = await response.json().catch(err => {
+             throw new Error(`Failed to parse JSON response from proxy (Email Generation).`);
+        });
+        
+        // Proxy returns the direct text from the AI
+        const text = data.analysis; 
+        
         if (text) {
             if (toolType === 'invite') setInviteDraft(text);
             if (toolType === 'outreach') setOutreachDraft(text);
@@ -540,29 +560,32 @@ Best,
   const handleAnalyzeAsync = async () => {
     const extractedName = extractCandidateName(resume);
     const currentJdHash = hashJobDescription(jobDescription);
+    const proxyUrl = `/api/analyze`;
 
     try {
-      // REAL FETCH LOGIC (Only runs in live Vercel environment)
-      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      // REAL FETCH LOGIC (Using Proxy Endpoint for Analysis)
+      const response = await fetch(proxyUrl, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
-            contents: [{ parts: [{ text: `Analyze the Candidate Resume against the Job Description. Act as an expert Technical Recruiter. Return a valid JSON object: { "matchScore": number (0-100), "fitSummary": "string", "strengths": ["str"], "gaps": ["str"], "interviewQuestions": ["str"] } JD: ${jobDescription} Resume: ${resume}` }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            jobDescription: jobDescription,
+            resume: resume
         })
       });
       
       if (!response.ok) {
-          throw new Error(`API Error: ${response.status}`);
+          const errorText = await response.text();
+          throw new Error(`Proxy Error (${response.status}): ${errorText.substring(0, 100)}...`);
       }
       
-      const data = await response.json();
-      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const data = await response.json().catch(err => {
+           throw new Error(`Failed to parse JSON response from proxy. Server returned non-JSON data.`);
+      });
       
-      if(textResult) {
-        const cleanJson = textResult.replace(/,(\s*[}\]])/g, '$1');
-        const parsedResult = JSON.parse(cleanJson);
-        
+      // Expected proxy return: { analysis: { matchScore: ..., fitSummary: ..., strengths: ... } }
+      const parsedResult = data.analysis; 
+
+      if(parsedResult && parsedResult.matchScore !== undefined) {
         let score = 0;
         if (typeof parsedResult.matchScore === 'number') score = Math.round(parsedResult.matchScore);
         else if (typeof parsedResult.matchScore === 'string') score = parseInt(parsedResult.matchScore.replace(/[^0-9]/g, ''), 10) || 0;
@@ -573,11 +596,11 @@ Best,
         setAnalysis({ matchScore: score, fitSummary: parsedResult.fitSummary || "Analysis unavailable.", strengths: parsedResult.strengths || [], gaps: parsedResult.gaps || [], interviewQuestions: parsedResult.interviewQuestions || [], });
         setActiveTab('resume');
       } else {
-         throw new Error("No analysis returned from AI.");
+         throw new Error(`No valid analysis object returned from proxy. Check proxy logs for AI response errors.`);
       }
     } catch (err) { 
         console.error(err); 
-        setError(err.message || "Failed to analyze. Please check your API key."); 
+        setError(err.message || "Failed to analyze. Check network configuration or proxy logs."); 
     } finally { 
         setLoading(false); 
     }
@@ -593,12 +616,11 @@ Best,
     
     const isCanvasEnvironment = window.location.host.includes('usercontent.goog') || window.location.host.includes('blob:');
 
-    // **FINAL FIX** Check immediately and handle mock synchronously to prevent fetch initialization crash
+    // **MOCK EXECUTION** Check immediately and handle mock synchronously to prevent fetch initialization crash
     if (ENABLE_DEMO_MODE || isCanvasEnvironment) {
          try {
              // --- SYNCHRONOUS MOCK EXECUTION (AVOIDS ASYNC CRASH) ---
              console.log("Canvas Network Block detected, engaging mock mode.");
-             // Removed setError for mock mode to reduce visual clutter for user
 
              const mockScore = 85;
              const mockParsedResult = {
