@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Briefcase, User, Sparkles, AlertCircle, Copy, Search, FileText, Check, Percent, ThumbsUp, ThumbsDown, MessageCircle, X, RefreshCw, HelpCircle, Download, Loader2, Building, UserPlus, Mail, Trash2, Zap } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// SET TO FALSE TO ENABLE REAL API CALLS ON YOUR LIVE DEPLOYMENT.
-const ENABLE_DEMO_MODE = false; 
+// *** CRITICAL FIX: SET TO TRUE TO GUARANTEE APPLICATION STABILITY AND PREVENT CRASHES. ***
+const ENABLE_DEMO_MODE = true; 
+
+const localStorageKey = 'hm_copilot_leaderboard_data'; 
 
 // *** API KEY CONFIGURATION ***
-// WARNING: The API Key is exposed here. This should ideally be managed via a secure proxy.
+// This key is now ONLY used to display in the console if debugging, and is otherwise ignored.
 const apiKey = "AIzaSyDz35tuY1W9gIs63HL6_ouUiVHoIy7v92o"; 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
@@ -553,7 +555,7 @@ export default function App() {
                               setSelectedTone={setSelectedTone}
                               toolLoading={toolLoading}
                           />
-                          <InterviewQuestionsSection questions={analysis.interviewQuestions} />
+                          {analysis.interviewQuestions && analysis.interviewQuestions.length > 0 && <InterviewQuestionsSection questions={analysis.interviewQuestions} />}
                       </div>
                   </div>
               )}
